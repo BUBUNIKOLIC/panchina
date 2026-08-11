@@ -14,7 +14,10 @@
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0b1220;--panel:#111c30;--panel2:#16243c;--line:#27364f;--txt:#e9eff8;--muted:#8fa3bf;
-      --az:#2f7fd8;--ro:#e0344c;--ve:#2fa35c;--am:#e0a13a}
+      --az:#2f7fd8;--ro:#e0344c;--ve:#2fa35c;--am:#e0a13a;
+      /* larghezza del campo in unità di altezza schermo: si cambia da qui */
+      --campo:78}
+@media (orientation:portrait){:root{--campo:105}}
 html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--txt);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-text-size-adjust:100%}
@@ -47,7 +50,11 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px}
 .de-tool-btn{padding:11px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);
   color:var(--txt);font-size:14px;font-weight:700}
 .de-tool-btn.active{background:var(--az);border-color:var(--az);color:#fff}
-.de-canvas-wrap{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#0a1830}
+.de-canvas-wrap{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#0a1830;
+  /* Il campo è legato all'ALTEZZA dello schermo, non alla larghezza: così su
+     iPad resta sempre visibile insieme alla barra degli strumenti, senza dover
+     scorrere. 78vh di larghezza = circa 56vh di altezza (proporzione 760x543). */
+  max-width:min(100%, calc(var(--campo) * 1vh));margin-left:auto;margin-right:auto}
 .de-canvas-wrap.de-frame-active{border-color:var(--az)}
 .de-canvas-wrap canvas{display:block;width:100%;height:auto;touch-action:none}
 .frametabs{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
@@ -59,7 +66,7 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px}
 .schema img{width:100%;border-radius:6px;background:#0a1830;display:block;margin-bottom:6px}
 .schema .nm{font-size:13px;font-weight:700;margin-bottom:2px}
 /* --- scouting --- */
-#slCourtWrap{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#0a1830}
+#slCourtWrap{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#0a1830;max-width:min(100%, calc(var(--campo) * 1vh));margin-left:auto;margin-right:auto}
 #slCourt{display:block;width:100%;height:auto;touch-action:manipulation}
 .chip{padding:8px 12px;border-radius:20px;border:1px solid var(--line);background:var(--panel2);
   color:var(--txt);font-size:12.5px;font-weight:600}
@@ -103,6 +110,7 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
       <button class="btn sm" onclick="lavChiudi()">← Archivio</button>
       <button class="de-tool-btn active" data-tool="penna" onclick="deSetTool('penna')">✏️ Penna</button>
       <button class="de-tool-btn" data-tool="gomma" onclick="deSetTool('gomma')">🧽 Gomma</button>
+      <button class="de-tool-btn" id="lavNumeriBtn" onclick="lavToggleNumeri()" title="Quando è acceso, un numero scritto a mano diventa un numero stampato">123</button>
       <button class="btn sm" onclick="deUndo()">↩︎ Annulla</button>
       <button class="btn sm" onclick="deClear()">Pulisci fase</button>
       <button class="btn sm" onclick="lavToggleMode()" id="lavModeBtn">Mezzo campo</button>
@@ -1283,6 +1291,25 @@ function setTab(t) {
 /* ========================== LAVAGNA ========================== */
 let lavEditIdx = null;
 
+/* Riconoscimento dei numeri: DISATTIVATO finché non lo chiedi tu.
+   Il motore di disegno prova a interpretare come cifra ogni tratto piccolo e
+   curvo: in partita significa vedersi comparire numeri a caso mentre si
+   disegna un taglio o un blocco. Qui la funzione viene avvolta in modo che
+   entri in gioco solo con il pulsante «123» acceso, e il resto del tempo la
+   penna disegni e basta, senza mai reinterpretare nulla. */
+let modoNumeri = false;
+const __riconosciCifraMotore = deTryRecognizeDigit;
+deTryRecognizeDigit = function (points) {
+  if (!modoNumeri) return null;
+  return __riconosciCifraMotore(points);
+};
+function lavToggleNumeri() {
+  modoNumeri = !modoNumeri;
+  const b = document.getElementById('lavNumeriBtn');
+  if (b) b.classList.toggle('active', modoNumeri);
+  toast(modoNumeri ? '123 — ora scrivi il numero' : 'Penna normale');
+}
+
 function lavRender() {
   const q = (document.getElementById('lavFiltro').value || '').trim().toLowerCase();
   const items = DB.lavagnaTattica.map((e, i) => ({ e, i }))
@@ -1360,6 +1387,7 @@ function lavNuovo(edit) {
   lavEditIdx = (edit != null) ? edit : null;
   deInit((e && e.campoMode) || 'half', 'lavagna', { big: true, theme: 'dark' });
   deState.tool = 'penna';
+  modoNumeri = false;
   if (e && Array.isArray(e.elementiFasi)) e.elementiFasi.forEach((els, i) => { if (deState.frames[i]) deState.frames[i].elements = JSON.parse(JSON.stringify(els)); });
   document.getElementById('lavArchivio').style.display = 'none';
   document.getElementById('lavEditor').style.display = 'block';
