@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Panchina">
+<meta name="theme-color" content="#0b1220">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>PANCHINA — Lavagna &amp; Scouting</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0b1220;--panel:#111c30;--panel2:#16243c;--line:#27364f;--txt:#e9eff8;--muted:#8fa3bf;
+      --az:#2f7fd8;--ro:#e0344c;--ve:#2fa35c;--am:#e0a13a}
+html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-text-size-adjust:100%}
+body{display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+header{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{font-weight:800;font-size:15px;letter-spacing:.5px}
+.brand small{display:block;font-weight:500;font-size:10px;color:var(--muted);letter-spacing:.3px}
+.tabs{display:flex;gap:6px;margin-left:auto}
+.tab{padding:9px 16px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);
+  color:var(--muted);font-size:13px;font-weight:700}
+.tab.active{background:var(--az);border-color:var(--az);color:#fff}
+main{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px}
+.view{display:none}.view.active{display:block}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:9px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--txt);font-size:13px;font-weight:600}
+.btn:active{opacity:.7}
+.btn.pri{background:var(--az);border-color:var(--az);color:#fff}
+.btn.dan{background:var(--ro);border-color:var(--ro);color:#fff}
+.btn.ok{background:var(--ve);border-color:var(--ve);color:#fff}
+.btn.sm{padding:6px 10px;font-size:12px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.ttl{font-size:12px;font-weight:800;letter-spacing:.6px;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+  border-radius:8px;padding:9px 10px;font-size:14px;font-family:inherit;-webkit-user-select:text;user-select:text}
+input,select{height:38px}
+label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px}
+.muted{color:var(--muted);font-size:12px;line-height:1.5}
+/* --- lavagna --- */
+.de-tool-btn{padding:11px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--txt);font-size:14px;font-weight:700}
+.de-tool-btn.active{background:var(--az);border-color:var(--az);color:#fff}
+.de-canvas-wrap{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#0a1830}
+.de-canvas-wrap.de-frame-active{border-color:var(--az)}
+.de-canvas-wrap canvas{display:block;width:100%;height:auto;touch-action:none}
+.frametabs{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.frametab{padding:7px 13px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);font-size:12px;font-weight:700}
+.frametab.active{background:var(--az);border-color:var(--az);color:#fff}
+.frametab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ve);margin-left:5px}
+.schemas{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.schema{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px}
+.schema img{width:100%;border-radius:6px;background:#0a1830;display:block;margin-bottom:6px}
+.schema .nm{font-size:13px;font-weight:700;margin-bottom:2px}
+/* --- scouting --- */
+#slCourtWrap{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#0a1830}
+#slCourt{display:block;width:100%;height:auto;touch-action:manipulation}
+.chip{padding:8px 12px;border-radius:20px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--txt);font-size:12.5px;font-weight:600}
+.chip.on{background:var(--az);border-color:var(--az);color:#fff}
+.chip.pl{border-radius:9px}
+.score{font-size:26px;font-weight:800;letter-spacing:1px}
+.pend{background:#1d2b45;border:1px solid var(--az);border-radius:12px;padding:12px;margin-bottom:12px}
+table.st{width:100%;border-collapse:collapse;font-size:12.5px}
+table.st th{background:var(--panel2);color:var(--muted);font-weight:700;text-align:left;padding:6px 8px;font-size:11px;text-transform:uppercase}
+table.st td{padding:6px 8px;border-top:1px solid var(--line)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:var(--ve);color:#fff;
+  padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:700;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.fs{position:fixed !important;inset:0;z-index:900;background:var(--bg);padding:8px;overflow-y:auto}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">PANCHINA<small>lavagna tattica &amp; scouting live</small></div>
+  <div class="tabs">
+    <button class="tab active" id="tabLav" onclick="setTab('lav')">✏️ Lavagna</button>
+    <button class="tab" id="tabScout" onclick="setTab('scout')">🎯 Scouting</button>
+    <button class="tab" id="tabDati" onclick="setTab('dati')">📤 Dati</button>
+  </div>
+</header>
+<main>
+
+<!-- ================= LAVAGNA ================= -->
+<div id="viewLav" class="view active">
+  <div id="lavArchivio">
+    <div class="row" style="margin-bottom:12px;">
+      <button class="btn pri" onclick="lavNuovo()">✏️ Nuovo disegno</button>
+      <button class="btn sm" onclick="lavNuovaSezione()">➕ Sezione</button>
+      <input id="lavFiltro" type="text" placeholder="🔍 Cerca…" oninput="lavRender()" style="flex:1;min-width:130px;">
+    </div>
+    <div id="lavLista"></div>
+  </div>
+
+  <div id="lavEditor" style="display:none;">
+    <div class="row" style="margin-bottom:8px;">
+      <button class="btn sm" onclick="lavChiudi()">← Archivio</button>
+      <button class="de-tool-btn active" data-tool="penna" onclick="deSetTool('penna')">✏️ Penna</button>
+      <button class="de-tool-btn" data-tool="gomma" onclick="deSetTool('gomma')">🧽 Gomma</button>
+      <button class="btn sm" onclick="deUndo()">↩︎ Annulla</button>
+      <button class="btn sm" onclick="deClear()">Pulisci fase</button>
+      <button class="btn sm" onclick="lavToggleMode()" id="lavModeBtn">Mezzo campo</button>
+      <button class="btn sm" onclick="lavToggleFs()" id="lavFsBtn">⛶ Schermo intero</button>
+      <button class="btn ok" style="margin-left:auto" onclick="lavSalva()">💾 Salva</button>
+    </div>
+    <div class="frametabs" id="lavFrameTabs"></div>
+    <div id="lavCanvasHost"></div>
+    <div class="card" style="margin-top:12px;">
+      <div class="ttl">Dati del disegno</div>
+      <div class="row">
+        <div style="flex:2;min-width:150px;"><label>Nome</label><input id="lavNome" type="text" placeholder="es. Zipper e pick" style="width:100%"></div>
+        <div style="flex:1;min-width:110px;"><label>Squadra</label><input id="lavSquadra" type="text" style="width:100%"></div>
+        <div style="flex:1;min-width:110px;"><label>Data</label><input id="lavData" type="date" style="width:100%"></div>
+        <div style="flex:1;min-width:110px;"><label>Sezione</label><select id="lavSezione" style="width:100%"></select></div>
+      </div>
+      <div style="margin-top:8px;"><label>Note</label><textarea id="lavNote" rows="2" style="width:100%"></textarea></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SCOUTING ================= -->
+<div id="viewScout" class="view">
+  <div class="card">
+    <div class="row">
+      <div style="flex:2;min-width:150px;"><label>Partita</label><input id="slPartita" type="text" placeholder="es. Italia - Belgio" oninput="slSetPartita(this.value)" style="width:100%"></div>
+      <div><label>Quarto</label>
+        <div class="row" id="slQuarti"></div>
+      </div>
+      <div style="margin-left:auto;text-align:right;">
+        <label>Punteggio</label>
+        <div class="row" style="justify-content:flex-end;">
+          <button class="btn sm" onclick="slPunti('noi',-1)">−</button>
+          <span class="score" id="slScore">0 : 0</span>
+          <button class="btn sm" onclick="slPunti('noi',1)">+</button>
+          <span class="muted" style="margin:0 4px">avv.</span>
+          <button class="btn sm" onclick="slPunti('avversari',-1)">−</button>
+          <button class="btn sm" onclick="slPunti('avversari',1)">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="slPending"></div>
+
+  <div class="card">
+    <div class="ttl">Campo — tocca dove è partito il tiro <span style="text-transform:none;font-weight:500">(un tocco = sbagliato, doppio tocco = segnato)</span></div>
+    <div id="slCourtWrap"><canvas id="slCourt" width="760" height="543"></canvas></div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn" onclick="slAvviaPP()">🔄 Palla persa</button>
+      <button class="btn" onclick="slAvviaTL('segnato')">🎯 TL segnato</button>
+      <button class="btn" onclick="slAvviaTL('sbagliato')">✖️ TL sbagliato</button>
+      <button class="btn sm" style="margin-left:auto" onclick="slUndo()">↩︎ Annulla ultimo</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ttl">Giocatrici <button class="btn sm" style="float:right" onclick="slAddGiocatrice()">＋ aggiungi</button></div>
+    <div class="row" id="slGiocatrici"></div>
+  </div>
+  <div class="card">
+    <div class="ttl">Difese avversarie <button class="btn sm" style="float:right" onclick="slAddDifesa()">＋ aggiungi</button></div>
+    <div class="row" id="slDifese"></div>
+  </div>
+  <div class="card">
+    <div class="ttl">Giochi / schemi <button class="btn sm" style="float:right" onclick="slAddGioco()">＋ aggiungi</button></div>
+    <div class="row" id="slGiochi"></div>
+  </div>
+  <div class="card">
+    <div class="ttl">Statistiche partita corrente</div>
+    <div id="slStats"></div>
+  </div>
+</div>
+
+<!-- ================= DATI ================= -->
+<div id="viewDati" class="view">
+  <div class="card">
+    <div class="ttl">Esporta per ITALBASKET WOMAN</div>
+    <p class="muted">Crea un file <b>.json</b> con i disegni della lavagna e gli eventi di scouting. In ITALBASKET WOMAN apri <b>Lavagna Tattica</b> o <b>Scouting Live</b> e usa <b>📥 Importa</b>: i dati si uniscono a quelli già presenti senza creare doppioni.</p>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn pri" onclick="esportaTutto()">📤 Esporta tutto</button>
+      <button class="btn" onclick="esportaSolo('lavagna')">📤 Solo lavagna</button>
+      <button class="btn" onclick="esportaSolo('scouting')">📤 Solo scouting</button>
+    </div>
+    <p class="muted" style="margin-top:10px;"><b>Su iPad:</b> si apre il foglio di condivisione — scegli <b>AirDrop</b> e tocca il tuo Mac. Il file arriva subito in Download sul Mac, senza passare da File.<br>
+    <b>Se preferisci tenerlo:</b> nello stesso foglio scegli <b>Salva su File</b>.<br>
+    <b>Su Mac:</b> il file viene scaricato normalmente nella cartella Download.</p>
+  </div>
+  <div class="card">
+    <div class="ttl">Riepilogo</div>
+    <div id="datiRiepilogo"></div>
+  </div>
+  <div class="card">
+    <div class="ttl">Manutenzione</div>
+    <div class="row">
+      <button class="btn" onclick="importaBackup()">📥 Importa un file in questa app</button>
+      <button class="btn dan" onclick="azzeraScouting()">🗑 Azzera eventi scouting</button>
+    </div>
+    <p class="muted" style="margin-top:8px;">I dati restano su questo iPad (memoria del browser). Esporta prima di cancellare la cronologia di Safari.</p>
+    <input type="file" id="fileImport" accept=".json,application/json" style="display:none" onchange="fileImportChange(this)">
+  </div>
+  <div class="card">
+    <div class="ttl">Come si installa sull'iPad</div>
+    <p class="muted">Ricevi il file via AirDrop → si apre in Safari (o aprilo da File).<br>
+    Poi <b>Condividi → Aggiungi a Home</b>: diventa un'icona e si apre a tutto schermo, anche senza rete.</p>
+  </div>
+</div>
+
+</main>
+<div class="toast" id="toast"></div>
+<script>
+let deState = null;
+
+function deCanvasSize(mode, big) {
+  const base = mode === 'full' ? { w: 576, h: 324 } : { w: 504, h: 360 };
+  if (!big) return base;
+  // Campo "grande": stesso fattore di scala del campo di Scouting Live
+  // (504x360 -> 760x543), usato dalla Lavagna Tattica per un campo più
+  // leggibile durante lo scouting dal vivo. Le proporzioni FIBA restano
+  // identiche, cambia solo la scala dei pixel.
+  const scale = 1.508;
+  return { w: Math.round(base.w * scale), h: Math.round(base.h * scale) };
+}
+
+function drawCourt(ctx, w, h, mode, theme) {
+  // theme: parametro facoltativo, retrocompatibile (tutte le chiamate esistenti
+  // continuano a disegnare bianco/nero non passandolo). theme==='dark' disegna
+  // un campo scuro con linee chiare, usato dalla vista Scouting Live "hitech".
+  const dark = theme === 'dark';
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = dark ? '#0a1830' : '#ffffff';
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = dark ? '#eef6ff' : '#000000';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(3, 3, w - 6, h - 6);
+  ctx.lineWidth = 1.6;
+  if (mode === 'full') {
+    const cx = w / 2;
+    ctx.beginPath(); ctx.moveTo(cx, 3); ctx.lineTo(cx, h - 3); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, h / 2, h * 0.14, 0, Math.PI * 2); ctx.stroke();
+    [0, 1].forEach(side => {
+      const hoopX = side === 0 ? 18 : w - 18;
+      const baseX = side === 0 ? 3 : w - 3;
+      const paintH = h * 0.327;
+      ctx.strokeRect(side === 0 ? 3 : w - 3 - w * 0.14, h / 2 - paintH / 2, w * 0.14, paintH);
+      ctx.beginPath(); ctx.arc(hoopX, h / 2, 5, 0, Math.PI * 2); ctx.stroke();
+      // Le due linee rette dell'arco da 3 punti, dal fondo campo fino all'inizio dell'arco.
+      const r3 = h * 0.45;
+      const ang = Math.PI * 0.42;
+      const dx = r3 * Math.cos(ang);
+      const dy = r3 * Math.sin(ang);
+      const arcX = side === 0 ? hoopX + dx : hoopX - dx;
+      ctx.beginPath(); ctx.moveTo(baseX, h / 2 - dy); ctx.lineTo(arcX, h / 2 - dy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(baseX, h / 2 + dy); ctx.lineTo(arcX, h / 2 + dy); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(hoopX, h / 2, r3, -ang, ang, side === 1);
+      ctx.stroke();
+    });
+    return;
+  }
+  // Proporzioni reali FIBA (campo largo 15m -> scala px/m = w/15, usata anche
+  // in verticale cosi' che accorciare il canvas non alteri le proporzioni):
+  // area 4.9m, cerchio tiro libero raggio 1.8m, arco da 3 raggio 6.75m,
+  // canestro a ~1.575m dalla linea di fondo, linea tiro libero a 5.8m.
+  const cx = w / 2;
+  const baseline = h - 5;
+  const scale = w / 15;
+  const paintW = w * 0.327;
+  const paintH = scale * 5.8;
+  const ftRadius = w * 0.12;
+  const threeRadius = w * 0.48;
+  const hoopY = baseline - scale * 1.575;
+  ctx.strokeRect(cx - paintW / 2, baseline - paintH, paintW, paintH);
+  ctx.beginPath(); ctx.arc(cx, baseline - paintH, ftRadius, Math.PI, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, baseline - paintH, ftRadius, 0, Math.PI); ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+  // Linee rette dell'arco da 3 punti: devono terminare esattamente dove
+  // inizia l'arco, non su un punto arbitrario (cx±threeRadius, hoopY) --
+  // stesso calcolo (ang/dx/dy) già usato correttamente nel ramo 'full' qui
+  // sopra, altrimenti si crea la "cucitura"/imperfezione visibile segnalata.
+  const ang3 = Math.PI * 0.06;
+  const dx3 = threeRadius * Math.cos(ang3);
+  const dy3 = threeRadius * Math.sin(ang3);
+  ctx.beginPath(); ctx.arc(cx, hoopY, threeRadius, ang3, Math.PI - ang3, true); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - dx3, baseline); ctx.lineTo(cx - dx3, hoopY + dy3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + dx3, baseline); ctx.lineTo(cx + dx3, hoopY + dy3); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, hoopY, 5, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 16, hoopY - 9); ctx.lineTo(cx + 16, hoopY - 9); ctx.stroke();
+}
+
+// context: 'playbook' (schemi tattici, default) limita a 5 attaccanti + 5
+// difensori (una squadra 5c5, come si gioca) + 1 sola "A" (assistente in
+// panchina) per fase; 'training' (diagrammi di allenamento) apre fino a 16
+// giocatori per squadra, visto che in seduta puo' servire schierare l'intero
+// roster e non solo un quintetto.
+const DE_CAPS = {
+  playbook: { off: 5, def: 5, staff: 1 },
+  training: { off: 16, def: 16, staff: 1 }
+};
+function deInit(mode, context, visual) {
+  deState = {
+    mode: mode || 'half',
+    tool: 'select',
+    active: 0,
+    zoomed: false,
+    frames: [0, 1, 2, 3].map(() => ({ elements: [], offCount: 0, defCount: 0, staffCount: 0 })),
+    pendingPath: null,
+    dragging: null,
+    caps: DE_CAPS[context] || DE_CAPS.playbook,
+    // visual: opzionale, {big:true, theme:'dark'} usato dalla Lavagna
+    // Tattica per un campo grande in stile "hitech" scuro come quello di
+    // Scouting Live -- assente (quindi undefined) per Playbook/Allenamenti,
+    // che continuano a disegnare il campo bianco/nero di sempre.
+    big: (visual && visual.big) || false,
+    theme: (visual && visual.theme) || null
+  };
+}
+
+function deRenderFrameToDataURL(f) {
+  const size = deCanvasSize(deState.mode, deState.big);
+  const canvas = document.createElement('canvas');
+  canvas.width = size.w; canvas.height = size.h;
+  const ctx = canvas.getContext('2d');
+  drawCourt(ctx, size.w, size.h, deState.mode, deState.theme);
+  deState.frames[f].elements.forEach(el => deDrawElement(ctx, el, false, deState.theme === 'dark'));
+  return canvas.toDataURL('image/png');
+}
+
+function deCur() {
+  return deState.frames[deState.active];
+}
+
+function deRedraw() {
+  for (let f = 0; f < deState.frames.length; f++) {
+    const canvas = document.getElementById('deCanvas' + f);
+    if (!canvas) continue;
+    const ctx = canvas.getContext('2d');
+    const size = deCanvasSize(deState.mode, deState.big);
+    drawCourt(ctx, size.w, size.h, deState.mode, deState.theme);
+    deState.frames[f].elements.forEach(el => deDrawElement(ctx, el, false, deState.theme === 'dark'));
+    if (f === deState.active && deState.pendingPath) deDrawElement(ctx, deState.pendingPath, true, deState.theme === 'dark');
+    const wrap = canvas.closest('.de-canvas-wrap');
+    if (wrap) wrap.classList.toggle('de-frame-active', f === deState.active);
+  }
+}
+
+function deDrawElement(ctx, el, preview, dark) {
+  ctx.save();
+  if (preview) ctx.globalAlpha = 0.55;
+  if (el.type === 'player') {
+    const isDef = el.team === 'def';
+    const isStaff = el.team === 'staff';
+    // Sul campo scuro "hitech" (Lavagna Tattica) il nero standard degli
+    // attaccanti sparirebbe: diventa bianco. Difesa/assistente restano
+    // rosso/blu (già leggibili sul navy scuro, e servono a distinguere i
+    // ruoli a colpo d'occhio).
+    const color = isDef ? '#d32f2f' : (isStaff ? '#1565c0' : (dark ? '#fff' : '#000'));
+    const circled = el.team === 'off' && el.hasBall;
+    if (isStaff) {
+      // Segnaposto "A" (assistente/allenatore in panchina): cerchio
+      // tratteggiato blu, ben distinto sia dalle giocatrici (nero/rosso
+      // pieno) sia dalla palla (cerchio nero continuo) — si legge subito
+      // come "non e' una giocatrice in campo".
+      ctx.beginPath();
+      ctx.arc(el.x, el.y, 16, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = color; ctx.lineWidth = 2.4; ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = color; ctx.font = '700 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('A', el.x, el.y);
+    } else if (circled) {
+      ctx.beginPath();
+      ctx.arc(el.x, el.y, 30, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = color; ctx.lineWidth = 3.2; ctx.stroke();
+      ctx.fillStyle = color; ctx.font = 'bold 25px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(el.label || '', el.x, el.y);
+    } else {
+      ctx.fillStyle = color;
+      ctx.font = (isDef ? '600 26px sans-serif' : 'bold 30px sans-serif');
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(el.label || '', el.x, el.y);
+    }
+  } else if (el.type === 'screen') {
+    ctx.strokeStyle = dark ? '#fff' : '#000'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(el.x - 10, el.y); ctx.lineTo(el.x + 10, el.y); ctx.stroke();
+  } else if (el.type === 'handoff') {
+    ctx.strokeStyle = dark ? '#fff' : '#000'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(el.x - 8, el.y - 7); ctx.lineTo(el.x + 8, el.y - 7);
+    ctx.moveTo(el.x - 8, el.y + 7); ctx.lineTo(el.x + 8, el.y + 7);
+    ctx.moveTo(el.x, el.y - 10); ctx.lineTo(el.x, el.y + 10);
+    ctx.stroke();
+  } else if (el.type === 'shot') {
+    ctx.strokeStyle = dark ? '#fff' : '#000'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(el.x, el.y, 8, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(el.x - 8, el.y); ctx.lineTo(el.x + 8, el.y); ctx.moveTo(el.x, el.y - 8); ctx.lineTo(el.x, el.y + 8); ctx.stroke();
+  } else if (el.type === 'palla') {
+    ctx.beginPath(); ctx.arc(el.x, el.y, 9, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(el.x, el.y - 9); ctx.lineTo(el.x, el.y + 9);
+    ctx.moveTo(el.x - 9, el.y); ctx.lineTo(el.x + 9, el.y);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(el.x - 4.5, el.y, 6.5, -Math.PI * 0.38, Math.PI * 0.38); ctx.stroke();
+    ctx.beginPath(); ctx.arc(el.x + 4.5, el.y, 6.5, Math.PI * 0.62, Math.PI * 1.38); ctx.stroke();
+  } else if (el.type === 'text') {
+    ctx.fillStyle = dark ? '#fff' : '#000'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(el.text, el.x, el.y);
+  } else if (el.type === 'path') {
+    deDrawPath(ctx, el, dark);
+  } else if (el.type === 'freehand') {
+    // Tratto libero (Penna): a differenza di taglio/palleggio/passaggio (che
+    // sono 2+ click con curva calcolata), qui i punti sono già densi -- presi
+    // in continuo durante il trascinamento del dito/Apple Pencil -- quindi
+    // basta una polilinea semplice, niente curva artificiale: segue esattamente
+    // il gesto della mano, come scrivere su un foglio.
+    const pts = el.points;
+    if (pts && pts.length) {
+      ctx.strokeStyle = dark ? '#fff' : '#000';
+      ctx.lineWidth = 3.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+    }
+  } else if (el.type === 'numero') {
+    // Cifra scritta a mano e riconosciuta (vedi deTryRecognizeDigit):
+    // ridisegnata pulita e leggibile, delle stesse dimensioni del tratto
+    // originale, invece di lasciare lo scarabocchio così com'è.
+    ctx.fillStyle = dark ? '#fff' : '#000';
+    ctx.font = '700 ' + Math.round(el.size || 34) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(el.value), el.x, el.y);
+  }
+  ctx.restore();
+}
+
+function deSmoothCurvePoints(ctx, pts) {
+  // Disegna (con ctx.quadraticCurveTo) una curva morbida che passa per tutti
+  // i punti cliccati (spostamento/taglio) e ritorna il punto "di approccio"
+  // finale, usato per orientare correttamente la freccia. Con 2 punti la
+  // linea viene arcuata leggermente invece di essere perfettamente dritta;
+  // con piu' punti la curva passa dolcemente per ogni waypoint.
+  ctx.moveTo(pts[0].x, pts[0].y);
+  if (pts.length === 2) {
+    const p0 = pts[0], p1 = pts[1];
+    const dx = p1.x - p0.x, dy = p1.y - p0.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;
+    const bow = Math.min(24, len * 0.18);
+    const ctrl = { x: (p0.x + p1.x) / 2 + nx * bow, y: (p0.y + p1.y) / 2 + ny * bow };
+    ctx.quadraticCurveTo(ctrl.x, ctrl.y, p1.x, p1.y);
+    return ctrl;
+  }
+  // Bug corretto qui: prima, l'ultimo giro di questo ciclo curvava fino al
+  // punto MEDIO tra il penultimo e l'ultimo waypoint, e poi un'istruzione
+  // separata dopo il ciclo aggiungeva un'altra curva fino al punto finale
+  // riusando lo STESSO punto di controllo appena usato -- questo faceva
+  // "ripiegare" la curva su se stessa proprio vicino alla fine (tangente
+  // invertita), visibile come un piccolo rimbalzo/imperfezione quando si
+  // disegna con un solo punto cliccato in mezzo (3 punti in tutto). Ora
+  // l'ultimo giro del ciclo curva direttamente fino al punto finale reale,
+  // esattamente come fa già (correttamente) deCurveSamples qui sotto --
+  // le due funzioni tornano così a disegnare la stessa identica geometria.
+  const ctrl = pts[pts.length - 2];
+  for (let i = 1; i < pts.length - 1; i++) {
+    if (i === pts.length - 2) {
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, pts[pts.length - 1].x, pts[pts.length - 1].y);
+    } else {
+      const mid = { x: (pts[i].x + pts[i + 1].x) / 2, y: (pts[i].y + pts[i + 1].y) / 2 };
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mid.x, mid.y);
+    }
+  }
+  return ctrl;
+}
+
+// Campiona la STESSA curva di deSmoothCurvePoints in una polilinea di punti
+// equidistanti nel parametro: serve al palleggio per far serpeggiare lo
+// zig-zag lungo una spina dorsale curva quando ci sono waypoint intermedi.
+function deCurveSamples(pts, per) {
+  const q = (a, c, b, t) => ({
+    x: (1 - t) * (1 - t) * a.x + 2 * (1 - t) * t * c.x + t * t * b.x,
+    y: (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * c.y + t * t * b.y
+  });
+  const segs = [];
+  if (pts.length === 2) {
+    const p0 = pts[0], p1 = pts[1];
+    const dx = p1.x - p0.x, dy = p1.y - p0.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const bow = Math.min(24, len * 0.18);
+    const ctrl = { x: (p0.x + p1.x) / 2 + (-dy / len) * bow, y: (p0.y + p1.y) / 2 + (dx / len) * bow };
+    segs.push([p0, ctrl, p1]);
+  } else {
+    let start = pts[0];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mid = { x: (pts[i].x + pts[i + 1].x) / 2, y: (pts[i].y + pts[i + 1].y) / 2 };
+      segs.push([start, pts[i], i === pts.length - 2 ? pts[pts.length - 1] : mid]);
+      start = mid;
+      if (i === pts.length - 2) break;
+    }
+  }
+  const out = [];
+  segs.forEach((s, si) => {
+    for (let i = si === 0 ? 0 : 1; i <= per; i++) out.push(q(s[0], s[1], s[2], i / per));
+  });
+  return out;
+}
+// Punta di freccia stilizzata "chiusa" (triangolo pieno, non più le due
+// semplici lineette a "V" aperta) -- condivisa tra il disegno statico del
+// diagramma (deDrawPath) e la riproduzione animata (deDrawPathPartial),
+// così le due viste restano visivamente identiche.
+function deDrawArrowHead(ctx, x, y, ang, size, dark) {
+  const len = size || 12;
+  const spread = Math.PI / 7.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - len * Math.cos(ang - spread), y - len * Math.sin(ang - spread));
+  ctx.lineTo(x - len * Math.cos(ang + spread), y - len * Math.sin(ang + spread));
+  ctx.closePath();
+  ctx.fillStyle = dark ? '#fff' : '#000';
+  ctx.fill();
+}
+function deDrawPath(ctx, el, dark) {
+  const pts = el.points;
+  if (pts.length < 2) return;
+  ctx.strokeStyle = dark ? '#fff' : '#000';
+  ctx.lineWidth = 2.2;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath();
+  let arrowFrom;
+  const curvo = pts.length > 2; // click intermedi = traiettoria curva
+  if (el.kind === 'palleggio') {
+    // Spina dorsale: dritta con 2 punti (comportamento storico), curva che
+    // passa per i waypoint cliccati a metà strada se ce ne sono di più.
+    // Campionata un po' più fitta (24/48 invece di 16/32 punti) per
+    // mantenere la sinusoide morbida anche con più onde ravvicinate qui
+    // sotto, invece di apparire spezzettata/a facce piatte.
+    let spine;
+    if (curvo) {
+      spine = deCurveSamples(pts, 24);
+    } else {
+      const p0 = pts[0], p1 = pts[pts.length - 1];
+      spine = [];
+      for (let i = 0; i <= 48; i++) spine.push({ x: p0.x + (p1.x - p0.x) * i / 48, y: p0.y + (p1.y - p0.y) * i / 48 });
+    }
+    // lunghezza cumulata per distribuire le onde in modo uniforme
+    const cum = [0];
+    for (let i = 1; i < spine.length; i++) cum.push(cum[i - 1] + Math.hypot(spine[i].x - spine[i - 1].x, spine[i].y - spine[i - 1].y));
+    const totalLen = cum[cum.length - 1] || 1;
+    const amp = 6;
+    // Sinusoide più fitta: un'onda ogni ~28px invece di ~45px, fino a 7
+    // onde invece di 4 sui tratti lunghi.
+    const waves = Math.max(1, Math.min(7, Math.round(totalLen / 28)));
+    const curvePts = spine.map((s, i) => {
+      const j = Math.min(spine.length - 1, Math.max(1, i));
+      const dx = spine[j].x - spine[j - 1].x, dy = spine[j].y - spine[j - 1].y;
+      const dl = Math.hypot(dx, dy) || 1;
+      const off = amp * Math.sin((cum[i] / totalLen) * Math.PI * 2 * waves);
+      return { x: s.x + (-dy / dl) * off, y: s.y + (dx / dl) * off };
+    });
+    ctx.moveTo(curvePts[0].x, curvePts[0].y);
+    for (let i = 1; i < curvePts.length; i++) ctx.lineTo(curvePts[i].x, curvePts[i].y);
+    arrowFrom = curvePts[curvePts.length - 2];
+  } else if (el.kind === 'passaggio') {
+    ctx.setLineDash([6, 5]);
+    if (curvo) {
+      // passaggio curvo (es. lob sopra la difesa) passando per i punti cliccati
+      arrowFrom = deSmoothCurvePoints(ctx, pts);
+    } else {
+      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+      arrowFrom = pts[pts.length - 2] || pts[0];
+    }
+  } else if (el.kind === 'bloccolinea') {
+    // blocco in corsa: continua e SENZA freccia, chiusa dalla barra a "T".
+    // Dritta con 2 punti, curva coi waypoint intermedi.
+    ctx.lineWidth = 3;
+    if (curvo) {
+      arrowFrom = deSmoothCurvePoints(ctx, pts);
+    } else {
+      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+      arrowFrom = pts[pts.length - 2] || pts[0];
+    }
+  } else {
+    // taglio / spostamento: linea continua curva con freccia finale
+    arrowFrom = deSmoothCurvePoints(ctx, pts);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const p1 = pts[pts.length - 1];
+  const p0 = arrowFrom || pts[pts.length - 2] || pts[0];
+  const ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+  if (el.kind === 'bloccolinea') {
+    // barra a "T" perpendicolare alla linea, nel punto in cui si ferma
+    // a bloccare — niente punta di freccia.
+    const perp = ang + Math.PI / 2;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(p1.x - 11 * Math.cos(perp), p1.y - 11 * Math.sin(perp));
+    ctx.lineTo(p1.x + 11 * Math.cos(perp), p1.y + 11 * Math.sin(perp));
+    ctx.stroke();
+    return;
+  }
+  deDrawArrowHead(ctx, p1.x, p1.y, ang, 12, dark);
+}
+
+// Distanza minima da un punto a un segmento (usata per "toccare" una linea
+// libera o un taglio/palleggio/passaggio disegnato con la gomma o Seleziona).
+function deDistToSegment(x, y, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  let t = lenSq ? ((x - a.x) * dx + (y - a.y) * dy) / lenSq : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(x - (a.x + t * dx), y - (a.y + t * dy));
+}
+function deDistToPolyline(x, y, pts) {
+  let min = Infinity;
+  for (let i = 1; i < pts.length; i++) min = Math.min(min, deDistToSegment(x, y, pts[i - 1], pts[i]));
+  return min;
+}
+function deHitTest(x, y) {
+  const elements = deCur().elements;
+  for (let i = elements.length - 1; i >= 0; i--) {
+    const el = elements[i];
+    if ((el.type === 'player' || el.type === 'screen' || el.type === 'shot' || el.type === 'palla' || el.type === 'handoff' || el.type === 'numero') && Math.hypot(el.x - x, el.y - y) < 32) return i;
+    if (el.type === 'text' && x >= el.x && x <= el.x + 70 && y >= el.y - 6 && y <= el.y + 16) return i;
+    // path (taglio/palleggio/passaggio/blocco corsa) e freehand (Penna
+    // libera): non hanno un x/y singolo, quindi si "tocca" la linea stessa
+    // (entro 14px) -- prima non erano cliccabili affatto con Seleziona/Gomma.
+    if ((el.type === 'path' || el.type === 'freehand') && el.points && el.points.length > 1 && deDistToPolyline(x, y, el.points) < 14) return i;
+  }
+  return -1;
+}
+
+function deFrameIndexFromEvt(evt) {
+  return parseInt(evt.currentTarget.id.replace('deCanvas', ''), 10);
+}
+
+// Sceglie a quale tocco seguire quando più dita/oggetti sono attivi insieme
+// sul campo -- il caso tipico su iPad è il palmo appoggiato al tablet mentre
+// si disegna con l'Apple Pencil, che prima faceva "saltare" il tratto perché
+// si guardava sempre e solo touches[0]. Ordine di preferenza: 1) un tocco
+// esplicitamente di tipo "stylus" (Safari marca così l'Apple Pencil quando
+// lo espone) -- così la penna vince sempre sul palmo, indipendentemente da
+// chi ha toccato per primo; 2) il tocco già agganciato all'inizio del
+// tratto corrente (deState.activeTouchId), per restare sullo stesso dito
+// per tutto il trascinamento anche se nel frattempo tocca qualcos'altro;
+// 3) il primo tocco della lista, come si faceva prima -- nessun cambio di
+// comportamento sui browser/dispositivi che non espongono touchType.
+function dePickTouch(evt) {
+  if (!evt.touches || !evt.touches.length) return null;
+  if (evt.touches.length > 1) {
+    for (let i = 0; i < evt.touches.length; i++) {
+      if (evt.touches[i].touchType === 'stylus') return evt.touches[i];
+    }
+    if (typeof deState !== 'undefined' && deState && deState.activeTouchId != null) {
+      for (let i = 0; i < evt.touches.length; i++) {
+        if (evt.touches[i].identifier === deState.activeTouchId) return evt.touches[i];
+      }
+    }
+  }
+  return evt.touches[0];
+}
+
+function deCanvasPoint(evt) {
+  const canvas = evt.currentTarget;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
+  const t = dePickTouch(evt);
+  const clientX = t ? t.clientX : evt.clientX;
+  const clientY = t ? t.clientY : evt.clientY;
+  return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+}
+
+function deOnDown(evt) {
+  if (deState.penDown && deState.tool === 'penna' && evt.touches) {
+    if (evt.touches.length > 1) {
+      // Un tratto a penna è già in corso e arriva un SECONDO tocco
+      // (tipicamente il palmo che si appoggia al tablet mentre si disegna
+      // con l'Apple Pencil): lo ignoriamo del tutto invece di lasciarlo
+      // interferire -- il tratto in corso resta agganciato solo al tocco
+      // che l'ha iniziato (vedi dePickTouch/deState.activeTouchId).
+      if (evt.preventDefault) evt.preventDefault();
+      return;
+    }
+    // Autoguarigione: se risulta ancora "penna giù" ma arriva un tocco
+    // SINGOLO e pulito, il tratto precedente non si è chiuso bene (es. iOS
+    // ha mandato un touchcancel invece di un touchend, che a volte sfugge
+    // ai gesti di sistema). Invece di restare bloccati in attesa di un
+    // touchend che potrebbe non arrivare mai (il sintomo era "il campo va
+    // in confusione"/gomma che non trova più niente da cancellare), si
+    // chiude e si salva da soli il tratto vecchio, poi si riparte pulito.
+    if (deState.pendingPath && deState.pendingPath.type === 'freehand') deFinishFreehand();
+    deState.penDown = false;
+    deState.activeTouchId = null;
+  }
+  evt.preventDefault();
+  const frameIdx = deFrameIndexFromEvt(evt);
+  if (frameIdx !== deState.active) {
+    // Un click su un diagramma non attivo lo seleziona come attivo, senza
+    // posizionare subito un elemento (evita click accidentali).
+    deState.active = frameIdx;
+    deState.pendingPath = null;
+    deState.dragging = null;
+    deRedraw();
+    return;
+  }
+  const p = deCanvasPoint(evt);
+  const tool = deState.tool;
+  const frame = deCur();
+  if (tool === 'select') {
+    const idx = deHitTest(p.x, p.y);
+    deState.dragging = idx >= 0 ? idx : null;
+    deState.dragLast = idx >= 0 ? p : null;
+    return;
+  }
+  if (tool === 'penna') {
+    // Penna libera: a differenza di taglio/palleggio/passaggio (click punto
+    // per punto), qui il tratto parte subito al tocco e segue il dito/Apple
+    // Pencil in continuo -- vedi deOnMove, che aggiunge punti solo mentre
+    // deState.penDown è vero (cioè col dito/penna ancora appoggiato).
+    // Aggancia il tratto al tocco appena scelto da dePickTouch (preferendo
+    // lo stylus se disponibile) cosi' un secondo tocco successivo (palmo)
+    // non puo' rubare il tracciamento a metà tratto.
+    const trackedTouch = evt.touches ? dePickTouch(evt) : null;
+    deState.activeTouchId = trackedTouch ? trackedTouch.identifier : null;
+    deState.pendingPath = { type: 'freehand', points: [p] };
+    deState.penDown = true;
+    deRedraw();
+    return;
+  }
+  if (tool === 'gomma') {
+    const idx = deHitTest(p.x, p.y);
+    if (idx >= 0) {
+      const removed = frame.elements[idx];
+      // Il segnaposto "A" (assistente) è un marcatore singolo, non una
+      // numerazione progressiva come attacco/difesa: cancellarlo libera
+      // subito lo slot per riposizionarlo, invece di restare bloccati a
+      // un solo utilizzo per fase come per i numeri 1-5/1-16 (lì cancellare
+      // un numero è una scelta definitiva di formazione, qui è solo "sposto
+      // il segnaposto").
+      if (removed.type === 'player' && removed.team === 'staff') {
+        frame.staffCount = Math.max(0, (frame.staffCount || 0) - 1);
+      }
+      frame.elements.splice(idx, 1);
+      deRedraw();
+    }
+    return;
+  }
+  if (tool === 'palla') {
+    // Se il tool Palla viene usato su un giocatore d'attacco gia' posizionato,
+    // lo cerchia (indica che ha la palla) invece di piazzare un pallone extra.
+    const hitIdx = deHitTest(p.x, p.y);
+    if (hitIdx >= 0) {
+      const hitEl = frame.elements[hitIdx];
+      if (hitEl.type === 'player' && hitEl.team === 'off') {
+        const nuovoStato = !hitEl.hasBall;
+        frame.elements.forEach(e => { if (e.type === 'player' && e.team === 'off') e.hasBall = false; });
+        hitEl.hasBall = nuovoStato;
+        deRedraw();
+        return;
+      }
+      deState.dragging = hitIdx;
+      return;
+    }
+    frame.elements.push({ type: 'palla', x: p.x, y: p.y });
+    deRedraw();
+    return;
+  }
+  // Un elemento gia' posizionato (giocatore/blocco/tiro/handoff) si puo' sempre
+  // trascinare per spostarlo, indipendentemente dallo strumento attivo -
+  // solo un click su spazio vuoto crea un nuovo elemento con lo strumento scelto.
+  if (tool === 'off' || tool === 'def' || tool === 'staff' || tool === 'screen' || tool === 'shot' || tool === 'testo' || tool === 'handoff') {
+    const hitIdx = deHitTest(p.x, p.y);
+    if (hitIdx >= 0) { deState.dragging = hitIdx; return; }
+  }
+  if (tool === 'off' || tool === 'def') {
+    const key = tool === 'off' ? 'offCount' : 'defCount';
+    const cap = tool === 'off' ? deState.caps.off : deState.caps.def;
+    if (frame[key] >= cap) {
+      alert(tool === 'off'
+        ? `Massimo ${cap} giocatrici d'attacco in questo diagramma.`
+        : `Massimo ${cap} difensori in questo diagramma.`);
+      return;
+    }
+    frame[key]++;
+    frame.elements.push({ type: 'player', team: tool, x: p.x, y: p.y, label: tool === 'off' ? String(frame[key]) : ('X' + frame[key]), hasBall: false });
+    deRedraw();
+    return;
+  }
+  if (tool === 'staff') {
+    // Marcatore per l'allenatore/assistente in panchina: sempre etichettato
+    // "A", non numerato — al massimo uno per fase (deState.caps.staff), non
+    // conta nei limiti di attacco/difesa qui sopra.
+    const cap = deState.caps.staff || 1;
+    if ((frame.staffCount || 0) >= cap) {
+      alert('Puoi aggiungere un solo segnaposto "A" (assistente) per fase — spostalo trascinandolo, o cancellalo con la gomma prima di riposizionarlo.');
+      return;
+    }
+    frame.staffCount = (frame.staffCount || 0) + 1;
+    frame.elements.push({ type: 'player', team: 'staff', x: p.x, y: p.y, label: 'A' });
+    deRedraw();
+    return;
+  }
+  if (tool === 'screen') { frame.elements.push({ type: 'screen', x: p.x, y: p.y }); deRedraw(); return; }
+  if (tool === 'handoff') { frame.elements.push({ type: 'handoff', x: p.x, y: p.y }); deRedraw(); return; }
+  if (tool === 'shot') { frame.elements.push({ type: 'shot', x: p.x, y: p.y }); deRedraw(); return; }
+  if (tool === 'testo') {
+    const txt = prompt('Testo da inserire nel diagramma:');
+    if (txt) { frame.elements.push({ type: 'text', x: p.x, y: p.y, text: txt }); deRedraw(); }
+    return;
+  }
+  if (tool === 'taglio' || tool === 'palleggio' || tool === 'passaggio' || tool === 'bloccolinea') {
+    if (!deState.pendingPath) {
+      deState.pendingPath = { type: 'path', kind: tool, points: [p] };
+    } else {
+      deState.pendingPath.points.push(p);
+    }
+    deRedraw();
+    return;
+  }
+}
+
+function deOnMove(evt) {
+  if (!deState) return;
+  // Va chiamato SEMPRE e SUBITO per ogni tocco sul campo, prima di qualsiasi
+  // altro controllo -- non solo nei rami che poi disegnano davvero qualcosa.
+  // Prima veniva chiamato più sotto, dentro i singoli "if"; ma appena il
+  // tocco cadeva in uno dei casi che escono subito (fase non attiva, o un
+  // attimo prima che il tratto a penna risultasse "giù"), il preventDefault
+  // veniva saltato e iOS interpretava il gesto come uno scroll: il campo a
+  // schermo intero si muoveva/scorreva sotto il dito invece di restare
+  // fermo mentre si disegna.
+  if (evt.touches) evt.preventDefault();
+  const frameIdx = deFrameIndexFromEvt(evt);
+  if (frameIdx !== deState.active) return;
+  const p = deCanvasPoint(evt);
+  const frame = deCur();
+  if (deState.dragging != null) {
+    evt.preventDefault();
+    const el = frame.elements[deState.dragging];
+    if (el.points) {
+      // Trascina un tratto libero/taglio/palleggio/passaggio intero: sposta
+      // tutti i suoi punti della stessa quantità invece di un singolo x/y
+      // (che quegli elementi non hanno -- la loro posizione è tutta nei
+      // punti), cosi' "Seleziona/Muovi" funziona anche su di loro.
+      const last = deState.dragLast || p;
+      const dx = p.x - last.x, dy = p.y - last.y;
+      el.points.forEach(pt => { pt.x += dx; pt.y += dy; });
+      deState.dragLast = p;
+    } else {
+      el.x = p.x; el.y = p.y;
+    }
+    deRedraw();
+    return;
+  }
+  if (deState.pendingPath && deState.pendingPath.type === 'freehand') {
+    if (!deState.penDown) return; // il dito/penna non è più appoggiato: non è un trascinamento
+    evt.preventDefault();
+    const pts = deState.pendingPath.points;
+    const last = pts[pts.length - 1];
+    // Aggiunge un punto solo se abbastanza lontano dall'ultimo -- altrimenti
+    // un trascinamento lento accumula migliaia di punti quasi coincidenti
+    // (file enormi, nessun beneficio visivo). Soglia bassa (1px) per
+    // catturare più punti possibile e seguire il tratto il più fedelmente
+    // possibile, specie nei tratti veloci con l'Apple Pencil.
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1) pts.push(p);
+    const canvas = evt.currentTarget;
+    const ctx = canvas.getContext('2d');
+    const size = deCanvasSize(deState.mode, deState.big);
+    drawCourt(ctx, size.w, size.h, deState.mode, deState.theme);
+    frame.elements.forEach(el => deDrawElement(ctx, el, false, deState.theme === 'dark'));
+    deDrawElement(ctx, deState.pendingPath, true, deState.theme === 'dark');
+    return;
+  }
+  if (deState.pendingPath) {
+    const preview = { type: 'path', kind: deState.pendingPath.kind, points: deState.pendingPath.points.concat([p]) };
+    const canvas = evt.currentTarget;
+    const ctx = canvas.getContext('2d');
+    const size = deCanvasSize(deState.mode, deState.big);
+    drawCourt(ctx, size.w, size.h, deState.mode, deState.theme);
+    frame.elements.forEach(el => deDrawElement(ctx, el, false, deState.theme === 'dark'));
+    deDrawElement(ctx, preview, true, deState.theme === 'dark');
+  }
+}
+
+function deOnUp(evt) {
+  if (!deState) return;
+  // Se un tratto a penna è in corso e questo touchend riguarda un dito
+  // diverso da quello che sta disegnando (es. il palmo appoggiato si
+  // solleva per primo), lo ignoriamo: il tratto deve continuare finché non
+  // si solleva proprio il tocco che lo sta tracciando, non un altro.
+  if (deState.penDown && deState.pendingPath && deState.pendingPath.type === 'freehand' &&
+      evt && evt.changedTouches && deState.activeTouchId != null) {
+    let liftedIsActive = false;
+    for (let i = 0; i < evt.changedTouches.length; i++) {
+      if (evt.changedTouches[i].identifier === deState.activeTouchId) { liftedIsActive = true; break; }
+    }
+    if (!liftedIsActive) return;
+  }
+  deState.dragging = null;
+  deState.dragLast = null;
+  if (deState.penDown && deState.pendingPath && deState.pendingPath.type === 'freehand') {
+    // Si solleva il dito/la penna: il tratto libero finisce qui da solo,
+    // niente bisogno di un secondo tocco su "Fine tratto" come per
+    // taglio/palleggio/passaggio (quelli restano multi-click apposta, per
+    // poter piegare la linea in più punti).
+    deState.penDown = false;
+    deState.activeTouchId = null;
+    deFinishFreehand();
+  }
+}
+
+// touchcancel: a differenza di touchend, l'OS lo manda quando INVALIDA un
+// tocco invece di chiuderlo normalmente (un gesto di sistema lo intercetta,
+// troppe dita attive insieme, si cambia app a metà tratto, ecc.) -- capita
+// più spesso di quanto sembri con l'Apple Pencil su iPad. A differenza di
+// deOnUp, qui NON si controlla quale dito sia: un tocco invalidato è
+// un'informazione inaffidabile su chi fosse comunque, quindi si chiude e si
+// salva SEMPRE il tratto/trascinamento in corso, cosi' il campo non resta
+// mai "in sospeso" ad aspettare un touchend che potrebbe non arrivare più
+// (il sintomo visto era il campo che sembra bloccarsi/andare in confusione,
+// con la gomma che non trova più niente da cancellare perché il tratto
+// disegnato non era mai stato salvato come elemento vero e proprio).
+function deOnCancel() {
+  if (!deState) return;
+  deState.dragging = null;
+  deState.dragLast = null;
+  if (deState.pendingPath) {
+    if (deState.pendingPath.type === 'freehand') deFinishFreehand();
+    else deFinishPath();
+  }
+  deState.penDown = false;
+  deState.activeTouchId = null;
+}
+
+function deFinishPath() {
+  if (deState.pendingPath) {
+    // Il doppio click aggiunge due click quasi coincidenti in coda: i punti
+    // consecutivi troppo vicini (< 8px) vanno fusi, o la freccia finale
+    // punterebbe a caso.
+    const pts = deState.pendingPath.points.filter((p, i, arr) => i === 0 || Math.hypot(p.x - arr[i - 1].x, p.y - arr[i - 1].y) > 8);
+    if (pts.length >= 2) {
+      deState.pendingPath.points = pts;
+      deCur().elements.push(deState.pendingPath);
+    }
+  }
+  deState.pendingPath = null;
+  deRedraw();
+}
+
+// Riduce una polilinea ai suoi punti essenziali (Douglas-Peucker): tiene un
+// punto solo se si allontana più di epsilon dal segmento diretto tra i punti
+// "fermi" più vicini, buttando via il resto. Serve PRIMA di ammorbidire la
+// curva (deSmoothPoints), per non amplificare ogni micro-tremolio del
+// dito/della penna invece di levigarlo.
+function deSimplifyPoints(pts, epsilon) {
+  if (pts.length < 3) return pts.slice();
+  function rdp(points, eps) {
+    let dmax = 0, index = 0;
+    const start = points[0], end = points[points.length - 1];
+    for (let i = 1; i < points.length - 1; i++) {
+      const d = deDistToSegment(points[i].x, points[i].y, start, end);
+      if (d > dmax) { dmax = d; index = i; }
+    }
+    if (dmax > eps) {
+      const left = rdp(points.slice(0, index + 1), eps);
+      const right = rdp(points.slice(index), eps);
+      return left.slice(0, -1).concat(right);
+    }
+    return [start, end];
+  }
+  return rdp(pts, epsilon);
+}
+
+// Ammorbidisce una polilinea con l'algoritmo di Chaikin (taglio degli
+// angoli): ad ogni passata sostituisce ogni segmento con due punti più
+// vicini ai suoi estremi, smussando gli angoli vivi. Pura geometria sui
+// punti già catturati mentre si disegnava -- nessun riconoscimento o
+// interpretazione di cosa rappresenti il tratto, solo "ripulitura" del
+// segno a mano libera (per forza un po' tremolante su un touchscreen) in
+// una linea morbida, come le altre linee "da diagramma" del Playbook.
+function deSmoothPoints(pts, iterations) {
+  let out = pts;
+  for (let it = 0; it < iterations; it++) {
+    if (out.length < 3) break;
+    const next = [out[0]];
+    for (let i = 0; i < out.length - 1; i++) {
+      const p0 = out[i], p1 = out[i + 1];
+      next.push({ x: p0.x * 0.75 + p1.x * 0.25, y: p0.y * 0.75 + p1.y * 0.25 });
+      next.push({ x: p0.x * 0.25 + p1.x * 0.75, y: p0.y * 0.25 + p1.y * 0.75 });
+    }
+    next.push(out[out.length - 1]);
+    out = next;
+  }
+  return out;
+}
+
+// --- Riconoscimento cifre scritte a mano (numeri per etichettare le
+// giocatrici in Lavagna Tattica, dove non c'è la barra "Attacco/Difesa"
+// numerata come nel Playbook -- solo Penna e Gomma) ------------------------
+// Rete neurale piccola (64 ingressi -> 32 nodi nascosti -> 10 cifre),
+// allenata offline su un dataset pubblico di cifre scritte a mano (sklearn
+// "digits", ~1800 esempi, 8x8 pixel), incorporata qui come pesi già pronti:
+// a runtime si fa solo un prodotto di matrici, nessuna richiesta di rete.
+// Precisione sul set di test tenuto da parte in fase di allenamento: ~98%.
+// Sul tratto vero disegnato col dito/Apple Pencil l'accuratezza sarà
+// inevitabilmente più bassa (la calligrafia reale è più varia dei campioni
+// di allenamento): per questo si tenta il riconoscimento SOLO su tratti
+// piccoli e compatti (quindi non su linee/frecce tattiche, che sono un'altra
+// cosa), e si accetta il risultato solo se il modello è abbastanza sicuro
+// (altrimenti il tratto resta il disegno a mano originale, come prima). Se
+// il numero letto è sbagliato, la Gomma lo cancella come qualsiasi altro
+// elemento e si può riscrivere.
+const DE_DIGIT_MODEL = {"w1":[[0.0,0.0,0.0,0.0,-0.0,-0.0,0.0,0.0,-0.0,-0.0,0.0,0.0,0.0,0.0,0.0,0.0,-0.0,-0.0,0.0,0.0,0.0,0.0,0.0,-0.0,-0.0,0.0,-0.0,0.0,-0.0,-0.0,-0.0,-0.0],[0.145,0.042,-0.106,-0.943,-0.756,0.158,0.197,-0.078,0.175,0.485,-0.204,0.307,-0.273,-0.493,0.796,0.31,0.702,0.454,0.0,0.19,-0.0,0.291,0.329,-0.305,0.392,0.513,0.126,0.149,-0.615,-0.014,0.153,-0.779],[0.021,0.328,-0.401,-0.019,-0.049,0.641,0.485,-0.263,0.047,0.472,0.384,0.199,0.443,-0.549,0.452,-0.616,0.568,0.313,-0.0,-0.142,-0.0,-0.396,-0.2,-0.037,0.748,0.213,0.117,-0.493,-0.193,-0.088,0.454,0.046],[-0.319,-0.149,0.223,0.344,-0.261,0.42,0.148,0.467,0.241,0.151,-0.329,0.506,0.185,-0.202,0.225,-0.288,0.272,0.072,0.0,-0.119,0.0,0.345,0.007,-0.062,0.198,0.548,-0.367,-0.164,0.237,0.143,0.496,0.017],[0.014,-0.221,0.141,-0.108,-0.207,0.127,-0.067,0.619,0.542,0.651,-0.285,0.392,0.285,-0.166,0.204,0.19,0.363,-0.237,0.0,-0.266,-0.0,0.203,-0.017,-0.514,-0.469,0.666,0.433,0.282,0.355,-0.037,0.046,0.077],[0.278,0.542,-0.626,-0.328,-0.441,0.179,-0.113,-0.152,0.2,0.459,0.593,0.172,-0.511,-0.011,0.279,-0.591,-0.01,0.5,0.0,-0.514,-0.0,0.136,0.233,-0.063,0.028,0.238,-0.014,0.157,0.14,-0.262,0.265,-0.108],[0.738,0.541,-0.817,-0.019,-0.477,0.58,0.464,-0.262,0.239,0.337,0.587,0.544,0.314,-0.77,0.366,-0.367,-0.623,0.403,0.0,-0.372,-0.0,-0.252,0.308,-0.619,0.607,0.705,-0.037,-0.056,-0.052,0.345,-0.19,-0.651],[-0.321,-0.297,0.312,0.5,0.056,0.312,-0.04,-0.051,-0.145,-0.033,-0.505,0.157,0.357,-0.166,0.115,-0.032,0.315,-0.385,-0.0,-0.074,0.0,0.159,0.149,0.308,-0.099,0.261,-0.222,-0.046,0.509,0.161,-0.263,0.114],[0.02,0.239,-0.021,-0.047,0.3,-0.021,-0.089,-0.079,0.061,0.075,0.215,0.029,-0.031,0.157,0.004,0.027,0.163,-0.103,0.0,0.135,-0.0,-0.282,-0.042,0.046,-0.03,-0.289,0.146,-0.263,0.113,-0.126,0.146,0.267],[0.785,-0.624,-0.633,0.166,0.1,0.458,0.032,0.352,0.08,-0.026,-0.683,-0.406,0.169,-0.575,0.097,-0.438,0.836,0.109,0.0,-0.476,-0.0,0.264,-0.284,0.01,-0.476,0.73,-0.044,0.08,-0.084,-0.135,0.172,0.457],[0.135,-0.077,0.059,0.065,0.354,0.607,0.077,0.247,0.315,0.174,0.001,-0.007,-0.057,-0.411,0.054,-0.346,0.643,0.073,-0.0,-0.309,-0.0,0.107,-0.506,-0.261,0.101,0.528,0.398,-0.433,-0.078,-0.112,0.138,0.27],[0.14,-0.006,0.048,0.143,-0.185,0.268,0.432,0.063,0.148,0.587,0.145,0.241,0.499,-0.051,0.666,0.324,0.009,-0.115,0.0,-0.375,-0.0,0.175,-0.197,-0.262,0.563,0.149,0.316,-0.14,-0.199,0.153,0.228,-0.128],[0.212,0.333,-0.184,-0.606,-0.247,0.013,0.367,0.268,-0.11,0.52,-0.553,0.69,0.234,-0.319,0.95,0.16,0.333,0.429,0.0,-0.104,-0.0,0.365,0.536,-0.095,-0.088,0.26,-0.348,0.623,0.279,0.538,0.554,-0.277],[-0.536,0.226,0.049,-0.123,0.363,-0.107,-0.323,0.166,0.029,0.32,-0.118,0.314,-0.197,0.183,-0.149,-0.031,0.421,-0.132,-0.0,0.031,0.0,0.478,0.016,-0.191,-0.475,0.112,0.024,0.167,0.256,0.426,0.5,0.126],[0.577,-0.146,-0.017,0.254,0.089,0.36,-0.409,0.25,0.239,0.419,0.039,-0.129,-0.259,0.152,0.231,-0.249,0.404,-0.219,0.0,-0.083,-0.0,0.334,-0.75,-0.216,-0.265,0.438,0.174,0.334,0.062,-0.227,0.295,0.029],[-0.336,0.153,0.274,0.523,-0.063,0.579,-0.235,-0.166,0.095,0.521,0.165,0.212,0.435,-0.426,0.09,-0.286,0.1,-0.655,0.0,0.085,-0.0,-0.105,-0.072,-0.059,0.027,0.268,0.065,-0.187,0.501,0.304,0.105,-0.053],[0.0,0.0,-0.0,-0.002,0.0,-0.0,0.011,-0.004,0.001,-0.004,0.005,0.001,-0.0,-0.001,0.001,0.0,-0.004,0.006,0.0,-0.0,-0.0,-0.001,0.0,0.002,0.003,0.0,-0.002,-0.002,-0.002,0.0,-0.0,0.003],[0.034,0.172,-0.779,0.245,0.334,0.127,0.148,0.216,0.171,0.091,0.028,-0.316,-0.082,0.106,-0.82,-0.329,0.103,0.075,-0.0,-0.288,0.0,0.608,-0.158,0.278,0.038,-0.408,0.004,-0.01,-0.038,0.206,0.241,0.509],[-0.449,0.481,0.135,0.012,0.533,0.281,0.309,-0.336,0.073,-0.082,0.242,-0.48,0.095,0.172,-0.931,0.231,-0.357,-0.236,-0.0,0.111,-0.0,-0.352,-0.498,-0.14,0.218,-0.639,0.119,-0.599,-0.339,-0.095,0.028,0.33],[0.005,0.778,-0.097,0.424,0.448,-0.544,0.788,-0.104,-0.175,-0.191,0.677,0.462,0.094,0.301,-0.263,0.106,-0.701,0.241,0.0,0.304,0.0,-0.198,0.439,0.435,0.373,-0.56,-0.418,-0.399,0.308,0.225,0.049,-0.272],[-0.549,0.044,-0.565,0.686,-0.692,0.1,-0.193,0.399,-0.113,-0.495,-0.748,0.346,-0.208,0.455,0.107,-0.694,-0.285,0.357,0.0,0.29,0.0,0.79,0.469,0.45,-0.794,-0.051,-0.652,0.269,0.342,0.507,0.126,0.326],[-0.431,0.023,0.299,0.891,0.315,0.073,0.403,0.511,-0.295,0.255,-0.707,0.116,0.868,0.008,-0.391,-0.692,0.451,-0.717,0.0,-0.369,-0.0,0.318,-0.274,0.211,-0.769,-0.194,-0.359,-0.394,0.396,0.335,0.251,0.326],[-0.173,-0.117,-0.048,0.412,0.138,-0.38,0.241,0.496,-0.487,-0.246,-1.041,0.367,0.376,0.243,-0.472,-0.107,0.652,-0.595,-0.0,0.056,0.0,0.457,-0.15,0.567,-0.872,-0.393,-0.528,0.652,0.497,0.333,0.553,0.699],[-0.169,-0.073,0.163,0.4,0.126,0.148,0.002,0.04,-0.087,0.024,-0.186,-0.151,0.446,0.128,-0.348,0.273,0.079,-0.217,0.0,0.176,-0.0,0.024,0.268,0.238,0.023,0.062,-0.099,0.019,0.016,0.131,-0.093,0.337],[0.118,-0.081,0.001,0.125,0.02,0.11,-0.035,-0.058,-0.026,-0.032,-0.005,-0.13,0.102,-0.007,-0.053,0.174,0.114,-0.038,-0.0,0.069,0.0,-0.0,0.033,0.045,-0.05,0.001,0.088,-0.028,-0.002,0.029,-0.09,0.151],[0.261,0.03,0.347,0.453,0.408,0.318,0.448,-0.073,0.23,0.181,0.722,-0.283,0.327,0.593,-0.49,0.578,-0.14,-0.044,0.0,-0.159,0.0,-0.116,-0.085,0.022,0.355,-0.084,0.309,-0.74,-0.195,0.132,-0.831,-0.113],[-0.128,0.339,0.229,0.499,0.57,0.307,0.41,-0.334,-0.473,0.435,0.356,-0.106,0.494,0.22,-0.131,0.469,-0.429,-0.139,-0.0,0.137,0.0,-0.151,0.112,-0.027,0.375,-0.432,0.298,-1.032,0.079,0.465,-0.529,0.0],[-0.252,0.464,0.06,0.643,0.774,0.437,-0.178,-0.041,0.547,0.219,0.288,-0.069,0.099,0.808,-0.438,-0.572,-0.673,-0.055,0.0,0.077,0.0,-0.119,-0.358,-0.047,-0.213,-0.689,0.034,-0.181,0.867,-0.549,0.094,0.246],[0.046,0.35,-0.433,0.584,-0.395,0.294,-0.537,0.185,0.292,0.282,0.572,0.009,-0.235,0.111,0.246,-0.568,-0.202,0.311,-0.0,0.259,-0.0,0.358,-0.07,-0.016,0.177,0.443,0.087,0.253,0.36,-0.189,-0.211,0.111],[0.089,-0.022,0.097,0.358,0.594,0.194,0.286,-0.094,-0.737,0.28,0.019,0.325,0.34,-0.277,0.011,0.021,-0.219,-0.555,-0.0,0.085,-0.0,-0.002,0.263,0.321,-0.34,0.021,-0.232,-0.45,0.211,0.242,0.461,0.44],[0.18,-0.28,0.18,0.428,0.102,-0.072,0.436,-0.457,-0.732,-0.324,-0.597,-0.027,0.684,-0.457,-0.354,0.356,0.298,-0.759,-0.0,0.407,0.0,-0.146,0.247,0.439,-0.286,-0.447,-0.007,-0.571,0.133,0.898,0.078,0.69],[0.034,-0.053,-0.023,0.07,0.183,-0.029,-0.015,-0.099,-0.008,-0.214,0.018,-0.142,0.0,0.222,-0.13,0.275,-0.022,0.003,0.0,0.251,-0.0,-0.043,0.163,0.271,0.121,-0.088,0.123,-0.0,-0.016,0.024,-0.088,0.221],[-0.0,-0.0,-0.0,0.0,0.0,0.0,0.0,0.0,0.0,-0.0,-0.0,-0.0,-0.0,0.0,-0.0,-0.0,-0.0,0.0,0.0,0.0,-0.0,0.0,-0.0,0.0,-0.0,0.0,0.0,0.0,0.0,-0.0,-0.0,0.0],[0.254,-0.194,0.449,-0.748,0.353,-0.398,0.277,-0.391,-0.39,-0.004,0.541,-0.335,0.173,0.132,0.227,0.468,0.029,-0.247,0.0,0.448,-0.0,-0.484,0.107,0.413,0.722,-0.448,0.333,0.148,-0.292,0.348,-0.186,-0.398],[0.433,0.274,0.618,0.246,0.365,-0.246,-0.073,-0.299,-0.142,0.118,0.466,-0.083,0.086,0.663,0.557,0.346,-0.061,-0.389,0.0,0.263,0.0,-0.412,0.285,-0.102,0.256,-0.34,0.216,-0.284,-0.019,0.298,-0.291,-0.324],[0.15,0.304,0.48,0.765,0.465,0.174,-0.567,0.132,0.112,-0.064,0.363,0.165,-0.438,0.239,0.137,-0.559,0.211,-0.252,-0.0,0.349,-0.0,-0.492,-0.465,0.038,-0.36,0.128,0.376,0.378,0.708,-0.366,0.431,0.477],[0.183,0.095,-0.324,0.558,-0.487,0.281,-0.247,-0.34,0.206,-0.441,0.082,0.259,-0.515,0.418,0.359,0.015,0.166,0.181,-0.0,0.601,-0.0,-0.442,0.309,0.524,-0.133,0.017,0.396,0.572,0.594,0.099,0.052,0.426],[-0.037,0.413,0.351,0.026,-0.311,0.203,-0.3,-0.281,-0.307,0.254,0.148,0.175,0.541,0.441,0.618,0.38,0.012,-0.007,0.0,0.047,-0.0,0.307,0.772,0.279,-0.19,0.324,0.107,-0.083,0.034,0.888,-0.183,-0.425],[0.263,-0.105,0.365,-0.032,-0.005,-0.032,0.029,-0.558,-0.446,0.305,0.516,-0.569,0.672,-0.127,0.916,0.649,-0.088,-0.244,0.0,0.56,0.0,-0.26,0.792,0.041,0.385,0.436,0.703,-0.302,-0.089,0.787,-1.017,-0.845],[0.0,-0.0,-0.0,0.0,0.0,-0.0,-0.0,0.0,0.0,-0.0,-0.0,0.0,-0.0,-0.0,-0.0,-0.0,-0.0,0.0,0.0,0.0,0.0,0.0,0.0,-0.0,-0.0,0.0,-0.0,0.0,0.0,0.0,0.0,-0.0],[0.003,0.003,-0.028,0.0,-0.015,0.003,-0.053,-0.052,-0.001,-0.103,-0.004,-0.119,0.039,0.015,0.0,-0.007,-0.002,0.007,-0.0,0.126,-0.0,0.003,-0.006,0.099,-0.001,-0.0,0.049,-0.007,0.037,0.036,-0.123,0.161],[0.695,-0.452,0.023,-0.015,0.202,-0.569,-0.821,-0.174,-0.603,-0.872,-0.26,-0.404,0.398,0.027,-0.346,0.693,0.601,0.032,0.0,0.578,0.0,-0.066,0.517,0.628,-0.385,0.205,-0.084,-0.623,0.274,0.322,0.052,0.823],[0.117,0.096,0.349,-0.895,0.651,-0.788,0.415,-0.031,-0.476,-0.161,0.309,0.688,-0.064,0.326,-0.176,0.458,0.274,-0.456,0.0,0.457,-0.0,-0.822,0.18,0.442,0.086,-0.585,0.353,0.183,-0.04,0.174,0.571,0.317],[0.052,-0.185,-0.688,-0.73,0.132,-0.733,0.255,-0.606,-0.626,-0.779,0.446,0.084,-0.226,-0.117,-0.064,-0.148,0.357,0.245,0.0,0.839,-0.0,-1.056,0.485,0.964,0.578,-0.683,-0.042,0.79,-0.23,0.473,0.82,0.798],[0.121,0.488,-0.417,0.022,-0.066,-0.434,-0.525,-0.062,-0.206,-0.339,0.39,0.145,-0.167,0.631,0.134,0.2,0.572,0.424,0.0,0.596,-0.0,-0.126,0.433,0.314,-0.1,-0.351,0.311,0.18,0.177,0.342,-0.478,0.192],[0.251,0.297,0.348,-0.24,0.142,-0.341,-0.391,0.14,0.713,0.599,0.328,-0.156,0.141,0.453,0.244,0.514,0.498,0.299,-0.0,0.305,-0.0,0.299,0.036,-0.126,-0.101,-0.216,0.756,0.133,0.355,0.142,-0.43,-0.183],[0.282,-0.436,0.252,-0.09,0.133,-0.084,-0.182,0.056,0.577,0.063,0.393,-0.639,-0.238,0.283,0.001,0.681,0.339,-0.112,0.0,0.456,0.0,-0.189,-0.146,-0.094,-0.232,0.215,0.641,0.609,-0.117,-0.225,-0.635,-0.301],[-0.066,-0.401,0.192,-0.336,0.168,-0.063,0.243,0.037,-0.02,-0.371,0.06,-0.039,-0.076,0.092,-0.284,0.433,-0.201,0.003,0.0,-0.02,-0.0,-0.15,-0.225,-0.131,0.215,0.185,0.055,0.292,-0.18,-0.102,0.064,-0.167],[0.004,-0.102,-0.195,0.001,0.017,0.012,-0.015,-0.089,0.001,-0.18,0.046,-0.051,-0.049,-0.064,0.036,0.162,0.088,0.244,0.0,-0.008,-0.0,-0.092,0.209,0.261,0.069,0.095,0.06,0.075,0.115,0.016,0.027,-0.019],[1.043,-0.474,-0.237,0.205,0.496,0.333,-0.291,0.228,0.051,-0.436,-0.336,-0.496,0.102,-0.134,-0.709,0.296,0.352,0.122,0.0,0.29,-0.0,0.323,0.268,0.776,-0.386,0.246,-0.162,-0.539,0.365,-0.241,-0.165,1.085],[-0.49,-0.114,0.504,-0.536,0.166,-0.263,0.032,0.459,0.132,0.189,0.311,0.461,-0.051,0.167,-0.838,0.449,0.258,-0.058,-0.0,0.16,-0.0,-0.217,-0.342,0.06,0.192,0.174,-0.011,0.068,-0.291,-0.193,0.544,0.142],[-0.053,-0.365,0.24,-0.357,-0.133,0.043,0.771,0.134,-0.627,-0.321,-0.105,0.26,0.037,-0.232,-0.058,0.403,0.072,0.409,0.0,0.041,-0.0,-0.031,0.154,0.736,0.858,0.423,-0.355,0.446,-0.446,0.542,0.542,-0.102],[0.394,0.054,-0.239,-0.082,0.025,-0.336,0.372,0.4,0.321,-0.142,-0.26,-0.089,-0.155,0.078,-0.204,0.698,-0.086,0.636,-0.0,-0.151,-0.0,0.7,0.658,0.323,0.528,0.145,-0.438,0.411,-0.462,-0.179,0.174,-0.229],[-0.309,-0.321,0.303,-0.622,0.509,-0.377,0.152,0.397,0.565,-0.128,0.138,0.046,-0.463,0.259,-0.452,0.007,0.201,0.531,0.0,0.128,0.0,0.484,-0.131,-0.251,-0.021,0.068,-0.188,0.403,-0.396,-0.929,0.352,0.045],[0.039,-0.408,0.354,0.068,0.031,-0.088,-0.201,0.641,0.469,-0.321,-0.017,0.239,-0.258,0.214,-0.681,0.038,0.092,0.157,0.0,-0.065,0.0,0.23,-0.432,-0.315,-0.79,0.212,0.209,0.769,0.257,-0.741,0.133,-0.103],[-0.095,0.541,-0.538,0.681,-0.427,0.31,0.625,0.08,-0.831,-0.297,-0.438,0.592,0.458,0.109,-0.609,-0.594,-0.352,0.315,-0.0,-0.349,0.0,0.901,0.184,0.584,0.59,-0.216,-0.534,-0.328,0.181,-0.783,0.26,0.073],[0.001,-0.049,-0.034,0.0,-0.0,0.001,0.004,-0.003,0.0,-0.011,-0.022,-0.0,-0.0,-0.05,-0.003,0.02,0.002,0.001,0.0,-0.005,0.0,0.001,0.0,0.0,0.005,0.071,-0.02,0.018,-0.051,-0.001,0.027,0.001],[0.136,-0.21,-0.613,-0.98,-0.251,0.02,0.4,0.175,0.516,0.217,0.074,0.231,-0.859,-0.378,0.582,-0.069,0.623,0.687,0.0,0.193,-0.0,0.085,-0.372,-0.263,0.771,0.648,0.009,0.552,-0.341,-0.134,0.466,-0.452],[0.204,-0.22,0.084,0.212,-0.062,0.56,0.112,0.105,0.593,0.482,-0.234,-0.231,0.17,-0.295,0.714,-0.197,0.339,0.52,0.0,-0.079,0.0,0.141,-0.357,-0.186,0.505,0.683,0.199,-0.08,-0.514,-0.046,-0.155,-0.255],[-0.06,0.28,-0.033,0.095,0.499,0.23,0.26,0.457,0.587,0.202,0.057,0.043,0.122,-0.131,0.296,-0.17,0.34,-0.016,-0.0,-0.259,-0.0,0.131,-0.461,-0.094,0.748,0.265,0.17,0.019,0.1,-0.354,0.063,-0.129],[0.195,-0.156,0.315,-0.157,0.567,-0.444,0.161,0.397,0.538,0.083,0.214,0.095,-0.097,0.353,-0.355,0.193,-0.047,0.393,0.0,-0.289,0.0,0.07,-0.213,0.122,0.424,0.119,0.048,-0.009,0.084,-0.645,0.101,0.069],[-0.072,0.044,0.304,-0.03,0.112,-0.256,0.453,0.42,0.219,-0.251,0.331,0.222,-0.268,0.209,-0.782,0.037,-0.376,0.298,0.0,0.05,0.0,0.43,-0.325,0.279,-0.01,0.207,-0.148,0.595,-0.351,-0.142,0.266,-0.327],[-0.27,-0.627,0.199,-0.078,-0.131,-0.263,0.525,0.233,-0.448,-0.645,-0.32,0.419,-0.029,-0.371,-1.046,0.181,-0.119,0.186,0.0,-0.174,0.0,0.863,-0.149,0.583,-0.323,0.264,-0.752,0.466,-0.0,-0.582,0.397,-0.076],[-0.16,0.397,-0.663,0.153,-0.066,-0.187,0.746,-0.226,-0.797,-0.638,-0.219,0.631,-0.231,0.004,-0.733,-0.311,-0.205,0.607,0.0,-0.277,0.0,0.415,-0.186,0.424,0.869,-0.258,-0.649,-0.05,0.225,-1.007,0.189,0.134]],"b1":[0.098,-0.222,0.191,0.129,0.044,0.346,0.167,0.151,0.143,0.171,0.218,0.026,0.035,0.143,0.242,0.277,0.133,0.222,-0.149,0.12,-0.168,-0.025,0.036,0.233,-0.074,0.375,0.478,0.325,0.021,0.137,0.394,0.253],"w2":[[-0.672,-1.64,-0.301,0.573,1.02,0.826,-0.333,0.732,-0.227,-0.483],[-0.033,0.855,-1.033,-0.387,-0.173,0.617,-0.239,0.109,0.46,-0.016],[0.797,-0.678,-0.976,-0.066,-0.201,-0.33,0.675,-0.224,-0.223,0.688],[-1.524,-0.03,-1.341,-0.445,1.007,-0.587,-0.986,-0.177,-0.417,1.241],[0.635,-0.29,-0.077,-0.686,0.108,0.166,0.509,-0.865,0.721,0.224],[-0.672,-1.271,-0.132,-0.068,0.407,0.653,-0.747,0.421,-0.529,0.694],[0.689,0.264,0.557,-0.676,-0.31,0.306,0.084,-0.165,-0.288,0.184],[0.015,-0.336,0.499,0.575,-0.802,-0.522,-0.507,-0.521,0.065,0.543],[-0.378,-0.606,-0.052,0.892,-0.696,0.612,-0.069,-1.19,0.393,0.107],[0.514,-0.692,-0.999,0.248,-0.994,0.806,-0.567,0.406,-0.015,0.388],[-0.779,-0.067,-1.074,-0.666,-0.143,0.867,0.899,-0.419,0.149,-0.519],[-0.282,0.551,0.312,-0.138,-0.837,-0.307,-0.135,0.513,0.151,0.02],[0.867,-0.465,-0.698,-1.213,0.444,0.107,-0.624,0.769,-0.696,0.718],[-0.178,0.653,-1.245,0.213,0.392,-0.571,0.615,-0.943,0.523,-0.157],[-0.305,-0.07,-1.098,0.744,-0.832,0.322,-1.174,0.702,-1.105,-0.841],[0.619,-1.223,-0.011,0.497,0.746,-0.502,0.735,-0.377,-0.988,-1.389],[0.532,-1.171,0.418,0.633,0.073,-0.343,-0.709,0.678,0.438,-0.759],[-0.797,0.694,0.498,0.523,0.03,0.426,-0.228,-0.507,-0.287,-0.479],[-0.0,0.0,0.0,0.0,-0.0,-0.0,0.0,-0.0,0.0,-0.0],[-0.729,0.151,-0.194,-0.233,0.754,-0.311,0.6,0.341,0.247,-1.001],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,-0.0,0.0],[-0.296,0.315,0.033,0.545,-1.156,-0.514,-0.869,-0.834,-1.035,0.276],[-0.014,0.631,0.114,-0.352,0.953,-0.365,-0.594,0.527,-1.385,-0.738],[-0.41,0.715,0.539,-0.705,0.874,-0.88,0.025,0.066,0.009,-0.523],[0.487,0.993,0.501,-0.737,-0.036,1.03,0.406,-0.713,-0.832,-1.344],[-0.581,-1.091,0.544,0.667,-0.793,0.269,-0.49,0.197,-0.875,0.214],[0.034,-1.242,-0.878,0.204,0.304,0.519,0.468,0.213,0.352,-0.669],[-0.539,0.13,0.845,0.963,-0.514,-1.254,0.891,-0.118,-0.083,-1.163],[-0.851,0.124,-0.805,-0.02,0.001,-0.814,-0.531,0.245,0.416,0.536],[0.675,0.723,-0.312,-1.165,0.767,-0.405,-0.716,0.865,-0.935,-0.364],[0.079,0.262,0.908,-0.468,-0.646,-0.372,-0.084,0.269,0.5,-0.023],[-0.556,-0.494,0.428,-0.689,0.565,-0.938,-0.449,-0.257,0.702,0.01]],"b2":[-0.14,-0.39,-0.05,-0.28,0.094,0.038,-0.016,-0.166,0.436,0.042]};
+
+// Trasforma un tratto (lista di punti {x,y} in coordinate del campo) in un
+// vettore 8x8 di intensità 0-1, con la stessa convenzione (cifra centrata,
+// riempie la gran parte del riquadro) usata dal dataset di allenamento --
+// disegna il tratto ingrandito su un canvas temporaneo e fa una media a
+// blocchi 4x4 per ridurlo a 8x8, invece di un semplice ridimensionamento del
+// browser (che userebbe un filtro diverso da quello con cui il modello è
+// stato allenato).
+function deRasterizeStrokeFor8x8(points) {
+  const CANVAS = 32, TARGET = 8, MARGIN = 6, LINE_W = 3;
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
+  const avail = CANVAS - 2 * MARGIN;
+  const scale = avail / Math.max(w, h);
+  const offX = MARGIN + (avail - w * scale) / 2;
+  const offY = MARGIN + (avail - h * scale) / 2;
+  const off = document.createElement('canvas');
+  off.width = CANVAS; off.height = CANVAS;
+  const octx = off.getContext('2d');
+  octx.fillStyle = '#000'; octx.fillRect(0, 0, CANVAS, CANVAS);
+  octx.strokeStyle = '#fff'; octx.lineWidth = LINE_W; octx.lineCap = 'round'; octx.lineJoin = 'round';
+  octx.beginPath();
+  points.forEach((p, i) => {
+    const px = (p.x - minX) * scale + offX, py = (p.y - minY) * scale + offY;
+    if (i === 0) octx.moveTo(px, py); else octx.lineTo(px, py);
+  });
+  octx.stroke();
+  const img = octx.getImageData(0, 0, CANVAS, CANVAS).data;
+  const block = CANVAS / TARGET;
+  const vec = new Array(TARGET * TARGET);
+  for (let ty = 0; ty < TARGET; ty++) {
+    for (let tx = 0; tx < TARGET; tx++) {
+      let sum = 0;
+      for (let by = 0; by < block; by++) {
+        for (let bx = 0; bx < block; bx++) {
+          const px = tx * block + bx, py = ty * block + by;
+          sum += img[(py * CANVAS + px) * 4]; // canale R, bianco su nero -> intensità
+        }
+      }
+      vec[ty * TARGET + tx] = (sum / (block * block)) / 255;
+    }
+  }
+  return vec;
+}
+
+function deDigitPredict(vec64) {
+  const m = DE_DIGIT_MODEL;
+  const hidden = new Array(m.b1.length);
+  for (let j = 0; j < m.b1.length; j++) {
+    let sum = m.b1[j];
+    for (let i = 0; i < vec64.length; i++) sum += vec64[i] * m.w1[i][j];
+    hidden[j] = Math.max(0, sum); // ReLU
+  }
+  const out = new Array(m.b2.length);
+  for (let j = 0; j < m.b2.length; j++) {
+    let sum = m.b2[j];
+    for (let i = 0; i < hidden.length; i++) sum += hidden[i] * m.w2[i][j];
+    out[j] = sum;
+  }
+  const maxLogit = Math.max(...out);
+  const exps = out.map(v => Math.exp(v - maxLogit));
+  const total = exps.reduce((a, b) => a + b, 0);
+  const probs = exps.map(v => v / total);
+  let best = 0;
+  for (let i = 1; i < probs.length; i++) if (probs[i] > probs[best]) best = i;
+  return { digit: best, confidence: probs[best] };
+}
+
+// Prova a riconoscere il tratto appena disegnato come una cifra scritta a
+// mano. Riconosce SOLO se il tratto è piccolo e compatto (dimensioni tipiche
+// di un numero scritto per etichettare una giocatrice, non di una linea o
+// freccia tattica, che sono molto più lunghe/estese) e solo se il modello è
+// abbastanza sicuro -- altrimenti torna null e il tratto resta il disegno a
+// mano originale, esattamente come prima.
+// Quanto un tratto è "dritto": distanza in linea d'aria tra inizio e fine
+// diviso la lunghezza reale del percorso. Vicino a 1 = quasi un segmento
+// dritto; più basso = il tratto piega/curva più volte. Una linea dritta non
+// verticale è quasi certamente un segno tattico (movimento, passaggio) e non
+// una cifra -- le uniche cifre scrivibili come segmento dritto sono "1"
+// (verticale) e poco altro, quindi si scarta subito senza nemmeno provare il
+// riconoscimento, invece di rischiare di leggerla come un numero a caso.
+function deStrokeStraightnessRatio(points) {
+  let pathLen = 0;
+  for (let i = 1; i < points.length; i++) pathLen += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  if (pathLen === 0) return 1;
+  const straight = Math.hypot(points[points.length - 1].x - points[0].x, points[points.length - 1].y - points[0].y);
+  return straight / pathLen;
+}
+
+function deTryRecognizeDigit(points) {
+  if (!points || points.length < 2) return null;
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const w = maxX - minX, h = maxY - minY;
+  const big = Math.max(w, h), small = Math.min(w, h);
+  const MIN_SIZE = 12, MAX_SIZE = 120;
+  if (big < MIN_SIZE || big > MAX_SIZE) return null;
+  // Segmento quasi dritto e NON verticale -- molto più probabile un tratto
+  // tattico corto (movimento/passaggio breve) che una cifra: lo si scarta
+  // prima ancora di rasterizzare, per non rischiare falsi positivi sui segni
+  // più comuni che il coach disegna su un campo (linee, non numeri).
+  const dxEnds = Math.abs(xs[xs.length - 1] - xs[0]), dyEnds = Math.abs(ys[ys.length - 1] - ys[0]);
+  const steepEnough = dyEnds > dxEnds * 1.6;
+  const isStraightLine = deStrokeStraightnessRatio(points) > 0.9;
+  if (isStraightLine && !steepEnough) return null;
+  if (!isStraightLine) {
+    // Un tratto CURVO troppo appiattito (largo e schiacciato) è più probabile
+    // una lineetta ondulata che una cifra -- le cifre curve (2,3,5,6,8,9,0)
+    // sono normalmente più alte che larghe o comunque non estremamente
+    // appiattite. Non si applica a un segmento dritto verticale (tipo "1"),
+    // che per natura ha larghezza quasi zero.
+    const MIN_ASPECT = 0.28;
+    if (small > 0 && small / big < MIN_ASPECT) return null;
+  }
+  const vec = deRasterizeStrokeFor8x8(points);
+  const { digit, confidence } = deDigitPredict(vec);
+  const CONFIDENCE_THRESHOLD = 0.78;
+  if (confidence < CONFIDENCE_THRESHOLD) return null;
+  return {
+    digit, confidence,
+    cx: (minX + maxX) / 2, cy: (minY + maxY) / 2,
+    size: Math.max(24, Math.min(60, big * 1.15)),
+  };
+}
+
+function deFinishFreehand() {
+  // Gemella di deFinishPath ma senza il filtro "fondi punti a <8px": la
+  // Penna libera vuole appositamente punti fitti per un tratto morbido, e
+  // quel filtro (pensato per ripulire il doppio-click di taglio/palleggio)
+  // ridurrebbe un tratto disegnato a mano a pochi segmenti spigolosi.
+  if (deState.pendingPath && deState.pendingPath.type === 'freehand') {
+    if (deState.pendingPath.points.length >= 2) {
+      // Prima si prova a riconoscere una cifra scritta a mano (numero di
+      // maglia) su tratti piccoli e compatti -- SUL TRATTO GREZZO, prima di
+      // semplificarlo/ammorbidirlo come linea, perché la semplificazione è
+      // pensata per linee tattiche e potrebbe deformare una cifra piccola.
+      const recognized = deTryRecognizeDigit(deState.pendingPath.points);
+      if (recognized) {
+        deCur().elements.push({ type: 'numero', value: recognized.digit, x: recognized.cx, y: recognized.cy, size: recognized.size });
+        deState.pendingPath = null;
+        deRedraw();
+        return;
+      }
+      // "Leggere il disegno a mano libera e disegnarlo come un diagramma":
+      // qui, alla fine del tratto, si ripuliscono i punti grezzi appena
+      // catturati (semplificazione + arrotondamento angoli) così il segno
+      // diventa una linea pulita da diagramma -- non un'interpretazione del
+      // contenuto, solo geometria sui punti che il tocco/la penna ha già
+      // tracciato.
+      const simplified = deSimplifyPoints(deState.pendingPath.points, 2.2);
+      deState.pendingPath.points = deSmoothPoints(simplified, 2);
+      deCur().elements.push(deState.pendingPath);
+    }
+  }
+  deState.pendingPath = null;
+  deRedraw();
+}
+
+function deSetTool(tool) {
+  if (deState.pendingPath) {
+    if (deState.pendingPath.type === 'freehand') deFinishFreehand();
+    else deFinishPath();
+  }
+  deState.penDown = false;
+  deState.activeTouchId = null;
+  deState.tool = tool;
+  document.querySelectorAll('.de-tool-btn[data-tool]').forEach(b => b.classList.toggle('active', b.getAttribute('data-tool') === tool));
+}
+
+function deUndo() {
+  if (deState.pendingPath) { deState.pendingPath = null; deState.penDown = false; deState.activeTouchId = null; }
+  else {
+    const frame = deCur();
+    const removed = frame.elements.pop();
+    if (removed && removed.type === 'player' && removed.team === 'staff') {
+      frame.staffCount = Math.max(0, (frame.staffCount || 0) - 1);
+    }
+  }
+  deRedraw();
+}
+
+function deClear() {
+  if (!confirm('Cancellare il disegno della Fase ' + (deState.active + 1) + '?')) return;
+  const frame = deCur();
+  frame.elements = [];
+  frame.offCount = 0; frame.defCount = 0; frame.staffCount = 0;
+  deRedraw();
+}
+
+// "Cancellare con un tocco tutto": a differenza di deClear() (solo la fase
+// attiva), questa cancella TUTTE le fasi in un colpo solo -- per quando si
+// vuole ripartire da un campo completamente vuoto durante un time-out,
+// senza dover ripulire fase per fase.
+function deClearAll() {
+  if (!confirm('Cancellare TUTTO il disegno (tutte le fasi)? Non si può annullare.')) return;
+  deState.frames.forEach(frame => {
+    frame.elements = [];
+    frame.offCount = 0; frame.defCount = 0; frame.staffCount = 0;
+  });
+  deState.pendingPath = null;
+  deState.penDown = false;
+  deState.activeTouchId = null;
+  deRedraw();
+}
+
+/* ==========================================================================
+   PANCHINA — livello applicativo.
+   Il motore di disegno sopra è estratto senza modifiche da ITALBASKET WOMAN,
+   così i disegni prodotti qui hanno esattamente la stessa struttura dati
+   (stesse coordinate su campo 760x543, stessi tipi di elemento) e vengono
+   importati in ITALBASKET WOMAN senza conversioni.
+   ========================================================================== */
+const LS_KEY = 'panchina_v1';
+let DB = { lavagnaTattica: [], lavagnaTatticaSezioni: ['Generale'],
+           scoutingLive: { eventi: [], giochiCustom: [], difeseCustom: [], giocatrici: [],
+                           partitaCorrente: '', quartoCorrente: '1', punteggio: { noi: 0, avversari: 0 } } };
+
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(DB)); } catch (e) { toast('⚠️ Memoria piena', true); } }
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      DB.lavagnaTattica = Array.isArray(d.lavagnaTattica) ? d.lavagnaTattica : [];
+      DB.lavagnaTatticaSezioni = Array.isArray(d.lavagnaTatticaSezioni) && d.lavagnaTatticaSezioni.length ? d.lavagnaTatticaSezioni : ['Generale'];
+      const s = d.scoutingLive || {};
+      DB.scoutingLive = {
+        eventi: Array.isArray(s.eventi) ? s.eventi : [],
+        giochiCustom: Array.isArray(s.giochiCustom) ? s.giochiCustom : [],
+        difeseCustom: Array.isArray(s.difeseCustom) ? s.difeseCustom : [],
+        giocatrici: Array.isArray(s.giocatrici) ? s.giocatrici : [],
+        partitaCorrente: s.partitaCorrente || '',
+        quartoCorrente: s.quartoCorrente || '1',
+        punteggio: (s.punteggio && typeof s.punteggio === 'object') ? s.punteggio : { noi: 0, avversari: 0 }
+      };
+    }
+  } catch (e) { /* dati illeggibili: si riparte puliti invece di bloccare l'app */ }
+}
+function toast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = err ? 'var(--ro)' : 'var(--ve)';
+  t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const uid = p => p + Date.now() + '_' + Math.floor(Math.random() * 100000);
+
+function setTab(t) {
+  ['lav', 'scout', 'dati'].forEach(k => {
+    document.getElementById('view' + k[0].toUpperCase() + k.slice(1)).classList.toggle('active', k === t);
+    document.getElementById('tab' + (k === 'lav' ? 'Lav' : k === 'scout' ? 'Scout' : 'Dati')).classList.toggle('active', k === t);
+  });
+  if (t === 'scout') slRender();
+  if (t === 'dati') datiRender();
+}
+
+/* ========================== LAVAGNA ========================== */
+let lavEditIdx = null;
+
+function lavRender() {
+  const q = (document.getElementById('lavFiltro').value || '').trim().toLowerCase();
+  const items = DB.lavagnaTattica.map((e, i) => ({ e, i }))
+    .filter(({ e }) => !q || (e.nome || '').toLowerCase().includes(q) || (e.squadra || '').toLowerCase().includes(q))
+    .sort((a, b) => (b.e.data || '').localeCompare(a.e.data || ''));
+  const host = document.getElementById('lavLista');
+  if (!DB.lavagnaTattica.length) {
+    host.innerHTML = '<div class="card"><p class="muted">Nessun disegno. Tocca «Nuovo disegno» per iniziare: si disegna a mano libera, il tratto viene regolarizzato da solo e i numeri scritti a mano vengono riconosciuti.</p></div>';
+    return;
+  }
+  host.innerHTML = DB.lavagnaTatticaSezioni.map(sez => {
+    const list = items.filter(({ e }) => (e.sezione || DB.lavagnaTatticaSezioni[0]) === sez);
+    if (q && !list.length) return '';
+    return `<div class="card">
+      <div class="ttl">${esc(sez)} <span style="float:right;font-weight:600">${list.length}</span></div>
+      ${list.length ? `<div class="schemas">${list.map(({ e, i }) => `
+        <div class="schema">
+          <img src="${e.diagrammi && e.diagrammi[0] ? e.diagrammi[0] : ''}" onclick="lavApri(${i})" alt="">
+          <div class="nm">${esc(e.nome)}</div>
+          <div class="muted">${esc(e.data || '')}${e.squadra ? ' — ' + esc(e.squadra) : ''}${e.diagrammi ? ' · ' + e.diagrammi.length + ' fase/i' : ''}</div>
+          <div class="row" style="margin-top:6px;">
+            <button class="btn sm" onclick="lavApri(${i})">Apri</button>
+            <button class="btn sm dan" onclick="lavElimina(${i})">✕</button>
+          </div>
+        </div>`).join('')}</div>` : '<p class="muted">Vuota.</p>'}
+    </div>`;
+  }).join('');
+}
+function lavNuovaSezione() {
+  const n = prompt('Nome della nuova sezione:');
+  if (!n || !n.trim()) return;
+  if (DB.lavagnaTatticaSezioni.some(s => s.toLowerCase() === n.trim().toLowerCase())) { toast('Esiste già', true); return; }
+  DB.lavagnaTatticaSezioni.push(n.trim()); save(); lavRender();
+}
+function lavSezioniOptions(sel) {
+  return DB.lavagnaTatticaSezioni.map(s => `<option value="${esc(s)}"${s === sel ? ' selected' : ''}>${esc(s)}</option>`).join('');
+}
+function lavMountCanvas() {
+  const size = deCanvasSize(deState.mode, true);
+  document.getElementById('lavCanvasHost').innerHTML =
+    `<div class="de-canvas-wrap de-frame-active"><canvas id="deCanvas${deState.active}" width="${size.w}" height="${size.h}"></canvas></div>`;
+  const c = document.getElementById('deCanvas' + deState.active);
+  c.addEventListener('mousedown', deOnDown);
+  c.addEventListener('mousemove', deOnMove);
+  c.addEventListener('mouseup', deOnUp);
+  c.addEventListener('mouseleave', deOnUp);
+  c.addEventListener('touchstart', deOnDown, { passive: false });
+  c.addEventListener('touchmove', deOnMove, { passive: false });
+  c.addEventListener('touchend', deOnUp);
+  c.addEventListener('touchcancel', deOnCancel);
+  lavFrameTabs();
+  deRedraw();
+}
+function lavFrameTabs() {
+  document.getElementById('lavFrameTabs').innerHTML = deState.frames.map((f, i) =>
+    `<button class="frametab${i === deState.active ? ' active' : ''}" onclick="lavSetFrame(${i})">Fase ${i + 1}${f.elements.length ? '<span class="dot"></span>' : ''}</button>`).join('');
+}
+function lavSetFrame(i) {
+  if (deState.pendingPath) { if (deState.pendingPath.type === 'freehand') deFinishFreehand(); else deFinishPath(); }
+  deState.active = i; lavMountCanvas();
+}
+function lavToggleMode() {
+  deState.mode = deState.mode === 'half' ? 'full' : 'half';
+  document.getElementById('lavModeBtn').textContent = deState.mode === 'half' ? 'Mezzo campo' : 'Tutto campo';
+  lavMountCanvas();
+}
+function lavToggleFs() {
+  const el = document.getElementById('lavEditor');
+  const on = !el.classList.contains('fs');
+  el.classList.toggle('fs', on);
+  document.getElementById('lavFsBtn').textContent = on ? '✕ Esci' : '⛶ Schermo intero';
+}
+function lavNuovo(edit) {
+  const e = (edit != null) ? DB.lavagnaTattica[edit] : null;
+  lavEditIdx = (edit != null) ? edit : null;
+  deInit((e && e.campoMode) || 'half', 'lavagna', { big: true, theme: 'dark' });
+  deState.tool = 'penna';
+  if (e && Array.isArray(e.elementiFasi)) e.elementiFasi.forEach((els, i) => { if (deState.frames[i]) deState.frames[i].elements = JSON.parse(JSON.stringify(els)); });
+  document.getElementById('lavArchivio').style.display = 'none';
+  document.getElementById('lavEditor').style.display = 'block';
+  document.getElementById('lavNome').value = e ? (e.nome || '') : '';
+  document.getElementById('lavSquadra').value = e ? (e.squadra || '') : '';
+  document.getElementById('lavData').value = (e && e.data) || new Date().toISOString().slice(0, 10);
+  document.getElementById('lavSezione').innerHTML = lavSezioniOptions(e ? e.sezione : DB.lavagnaTatticaSezioni[0]);
+  document.getElementById('lavNote').value = e ? (e.note || '') : '';
+  document.getElementById('lavModeBtn').textContent = deState.mode === 'half' ? 'Mezzo campo' : 'Tutto campo';
+  document.querySelectorAll('.de-tool-btn[data-tool]').forEach(b => b.classList.toggle('active', b.getAttribute('data-tool') === 'penna'));
+  lavMountCanvas();
+}
+function lavApri(i) { lavNuovo(i); }
+function lavChiudi() {
+  document.getElementById('lavEditor').classList.remove('fs');
+  document.getElementById('lavFsBtn').textContent = '⛶ Schermo intero';
+  document.getElementById('lavEditor').style.display = 'none';
+  document.getElementById('lavArchivio').style.display = 'block';
+  lavEditIdx = null; lavRender();
+}
+function lavElimina(i) {
+  if (!confirm('Eliminare «' + (DB.lavagnaTattica[i].nome || '') + '»?')) return;
+  DB.lavagnaTattica.splice(i, 1); save(); lavRender();
+}
+function lavSalva() {
+  const nome = document.getElementById('lavNome').value.trim();
+  if (!nome) { toast('Manca il nome', true); return; }
+  if (deState.pendingPath) { if (deState.pendingPath.type === 'freehand') deFinishFreehand(); else deFinishPath(); }
+  // Le fasi vengono rasterizzate una per una: deRenderFrameToDataURL legge il
+  // canvas della fase attiva, quindi bisogna montarla davvero prima di
+  // catturarla (non basta cambiare deState.active).
+  const salvaActive = deState.active;
+  const diagrammi = [], elementiFasi = [];
+  for (let f = 0; f < deState.frames.length; f++) {
+    if (!deState.frames[f].elements.length) continue;
+    deState.active = f; lavMountCanvas();
+    diagrammi.push(deRenderFrameToDataURL(f));
+    elementiFasi.push(deState.frames[f].elements);
+  }
+  deState.active = salvaActive; lavMountCanvas();
+  if (!diagrammi.length) { toast('Disegna almeno una fase', true); return; }
+  const prev = lavEditIdx != null ? DB.lavagnaTattica[lavEditIdx] : null;
+  const entry = {
+    id: (prev && prev.id) || uid('lav'),
+    nome, data: document.getElementById('lavData').value || new Date().toISOString().slice(0, 10),
+    squadra: document.getElementById('lavSquadra').value.trim(),
+    sezione: document.getElementById('lavSezione').value || DB.lavagnaTatticaSezioni[0],
+    note: document.getElementById('lavNote').value.trim(),
+    diagrammi, elementiFasi, campoMode: deState.mode, big: true,
+    convertito: (prev && prev.convertito) || false
+  };
+  if (lavEditIdx != null) DB.lavagnaTattica[lavEditIdx] = entry; else DB.lavagnaTattica.push(entry);
+  save(); toast('💾 Salvato (' + diagrammi.length + ' fase/i)'); lavChiudi();
+}
+
+/* ========================== SCOUTING LIVE ========================== */
+const SL_W = 760, SL_H = 543;
+const SL_CAT = ['Attacco', 'Contropiede', 'Rimessa laterale', 'Rimessa fondo', 'Secondo tiro'];
+let slPend = null, slPendPP = null, slPendTL = null, slLastTap = 0, slTapTimer = null, slXY = { x: .5, y: .5 };
+
+// Stessa geometria di ITALBASKET WOMAN: garantisce che un tiro registrato qui
+// valga 2 o 3 punti esattamente come varrebbe là.
+function slShotValue(xPct, yPct) {
+  const w = SL_W, h = SL_H, x = xPct * w, y = yPct * h, cx = w / 2;
+  const baseline = h - 5, scale = w / 15, threeRadius = w * 0.48;
+  const hoopY = baseline - scale * 1.575;
+  const ang3 = Math.PI * 0.06, dx3 = threeRadius * Math.cos(ang3), dy3 = threeRadius * Math.sin(ang3);
+  const is3 = (y >= hoopY + dy3) ? Math.abs(x - cx) > dx3 : Math.hypot(x - cx, y - hoopY) > threeRadius;
+  return is3 ? 3 : 2;
+}
+function slDrawCourt() {
+  const c = document.getElementById('slCourt'); if (!c) return;
+  const ctx = c.getContext('2d');
+  drawCourt(ctx, SL_W, SL_H, 'half', 'dark');
+  slEventiPartita().forEach(e => {
+    if (e.tipo !== 'tiro' || e.xPct == null) return;
+    const x = e.xPct * SL_W, y = e.yPct * SL_H, seg = e.esito === 'segnato';
+    ctx.lineWidth = 3; ctx.strokeStyle = seg ? '#3ddc84' : '#ff5f6d';
+    ctx.beginPath();
+    if (seg) { ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.stroke(); }
+    else { ctx.moveTo(x - 8, y - 8); ctx.lineTo(x + 8, y + 8); ctx.moveTo(x + 8, y - 8); ctx.lineTo(x - 8, y + 8); ctx.stroke(); }
+  });
+  if (slPend) {
+    const x = slPend.xPct * SL_W, y = slPend.yPct * SL_H;
+    ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2.5; ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+  }
+}
+function slCourtTap(evt) {
+  const c = document.getElementById('slCourt'), r = c.getBoundingClientRect();
+  const p = (evt.changedTouches && evt.changedTouches[0]) || evt;
+  slXY = { x: Math.min(1, Math.max(0, (p.clientX - r.left) / r.width)),
+           y: Math.min(1, Math.max(0, (p.clientY - r.top) / r.height)) };
+  const now = Date.now();
+  if (slLastTap && now - slLastTap < 350) { clearTimeout(slTapTimer); slLastTap = 0; slAvvia('segnato'); }
+  else { slLastTap = now; slTapTimer = setTimeout(() => { slLastTap = 0; slAvvia('sbagliato'); }, 350); }
+}
+function slAvvia(esito) {
+  slPend = { esito, difesa: null, giocatrice: null, xPct: slXY.x, yPct: slXY.y, punti: slShotValue(slXY.x, slXY.y) };
+  slPendPP = slPendTL = null; slRender();
+}
+function slAvviaPP() { slPendPP = { giocatrice: null, gioco: null }; slPend = slPendTL = null; slRender(); }
+function slAvviaTL(esito) { slPendTL = { esito, giocatrice: null }; slPend = slPendPP = null; slRender(); }
+function slAnnulla() { slPend = slPendPP = slPendTL = null; slRender(); }
+function slPushEvento(ev) {
+  const sl = DB.scoutingLive;
+  ev.id = uid('sl'); ev.partita = sl.partitaCorrente || ''; ev.quarto = sl.quartoCorrente || '1'; ev.ts = Date.now();
+  sl.eventi.push(ev); save();
+}
+function slCommitTiro(categoria) {
+  if (!slPend) return;
+  slPushEvento({ tipo: 'tiro', esito: slPend.esito, categoria, difesa: slPend.difesa,
+                 giocatrice: slPend.giocatrice, xPct: slPend.xPct, yPct: slPend.yPct, punti: slPend.punti });
+  if (slPend.esito === 'segnato') DB.scoutingLive.punteggio.noi += slPend.punti;
+  slPend = null; save(); slRender(); toast('✔︎ Registrato');
+}
+function slCommitPP() {
+  if (!slPendPP) return;
+  slPushEvento({ tipo: 'pp', giocatrice: slPendPP.giocatrice, gioco: slPendPP.gioco });
+  slPendPP = null; slRender(); toast('✔︎ Palla persa');
+}
+function slCommitTL() {
+  if (!slPendTL) return;
+  slPushEvento({ tipo: 'tiro', esito: slPendTL.esito, categoria: 'TL', difesa: null,
+                 giocatrice: slPendTL.giocatrice, punti: 1 });
+  if (slPendTL.esito === 'segnato') DB.scoutingLive.punteggio.noi += 1;
+  slPendTL = null; save(); slRender(); toast('✔︎ Tiro libero');
+}
+function slUndo() {
+  const sl = DB.scoutingLive;
+  if (!sl.eventi.length) { toast('Niente da annullare', true); return; }
+  const e = sl.eventi.pop();
+  if (e.tipo === 'tiro' && e.esito === 'segnato') sl.punteggio.noi = Math.max(0, sl.punteggio.noi - (e.punti || 0));
+  save(); slRender(); toast('↩︎ Annullato');
+}
+function slTagGioc(n) {
+  const t = slPend || slPendPP || slPendTL; if (!t) return;
+  t.giocatrice = t.giocatrice === n ? null : n; slRender();
+}
+function slTagDif(n) { if (!slPend) return; slPend.difesa = slPend.difesa === n ? null : n; slRender(); }
+function slTagGioco(n) { if (!slPendPP) return; slPendPP.gioco = slPendPP.gioco === n ? null : n; slRender(); }
+function slSetPartita(v) { DB.scoutingLive.partitaCorrente = v; save(); }
+function slSetQuarto(q) { DB.scoutingLive.quartoCorrente = q; save(); slRender(); }
+function slPunti(chi, d) { const p = DB.scoutingLive.punteggio; p[chi] = Math.max(0, (p[chi] || 0) + d); save(); slRender(); }
+function slEventiPartita() { const sl = DB.scoutingLive; return sl.eventi.filter(e => (e.partita || '') === (sl.partitaCorrente || '')); }
+function slAddGiocatrice() {
+  const n = prompt('Nome (puoi mettere anche il numero, es. «13 Cubaj»):');
+  if (!n || !n.trim()) return;
+  DB.scoutingLive.giocatrici.push(n.trim()); save(); slRender();
+}
+function slAddDifesa() { const n = prompt('Difesa avversaria:'); if (n && n.trim()) { DB.scoutingLive.difeseCustom.push(n.trim()); save(); slRender(); } }
+function slAddGioco() { const n = prompt('Nome del gioco/schema:'); if (n && n.trim()) { DB.scoutingLive.giochiCustom.push(n.trim()); save(); slRender(); } }
+function slRemove(lista, n) {
+  if (!confirm('Togliere «' + n + '»?')) return;
+  const a = DB.scoutingLive[lista]; const i = a.indexOf(n); if (i >= 0) a.splice(i, 1); save(); slRender();
+}
+function slStatsGioc(n) {
+  let t = 0, s = 0, pp = 0;
+  slEventiPartita().forEach(e => { if (e.giocatrice !== n) return; if (e.tipo === 'tiro') { t++; if (e.esito === 'segnato') s++; } else if (e.tipo === 'pp') pp++; });
+  return { t, s, pp };
+}
+function slRender() {
+  const sl = DB.scoutingLive;
+  document.getElementById('slPartita').value = sl.partitaCorrente || '';
+  document.getElementById('slScore').textContent = (sl.punteggio.noi || 0) + ' : ' + (sl.punteggio.avversari || 0);
+  document.getElementById('slQuarti').innerHTML = ['1', '2', '3', '4', 'S'].map(q =>
+    `<button class="chip${sl.quartoCorrente === q ? ' on' : ''}" onclick="slSetQuarto('${q}')">${q}</button>`).join('');
+  const gio = sl.giocatrici, tgt = slPend || slPendPP || slPendTL;
+  document.getElementById('slGiocatrici').innerHTML = gio.length ? gio.map(n => {
+    const st = slStatsGioc(n);
+    return `<button class="chip pl${tgt && tgt.giocatrice === n ? ' on' : ''}" onclick="slTagGioc('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giocatrici','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}<span class="muted" style="margin-left:6px">${st.s}/${st.t}${st.pp ? ' · ' + st.pp + 'pp' : ''}</span></button>`;
+  }).join('') : '<span class="muted">Nessuna giocatrice: tocca «＋ aggiungi». Doppio tocco su una per toglierla.</span>';
+  document.getElementById('slDifese').innerHTML = sl.difeseCustom.length ? sl.difeseCustom.map(n =>
+    `<button class="chip${slPend && slPend.difesa === n ? ' on' : ''}" onclick="slTagDif('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('difeseCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}</button>`).join('') : '<span class="muted">Nessuna difesa inserita.</span>';
+  document.getElementById('slGiochi').innerHTML = sl.giochiCustom.length ? sl.giochiCustom.map(n =>
+    `<button class="chip${slPendPP && slPendPP.gioco === n ? ' on' : ''}" onclick="slTagGioco('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giochiCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}</button>`).join('') : '<span class="muted">Nessun gioco inserito.</span>';
+
+  let ph = '';
+  if (slPend) {
+    ph = `<div class="pend"><div class="ttl" style="color:var(--txt)">Tiro da ${slPend.punti} — ${slPend.esito.toUpperCase()}</div>
+      <div class="muted" style="margin-bottom:8px">Tagga giocatrice e difesa qui sotto (facoltativo), poi scegli la situazione:</div>
+      <div class="row">${SL_CAT.map(c => `<button class="btn pri" onclick="slCommitTiro('${c}')">${c}</button>`).join('')}
+      <button class="btn sm" style="margin-left:auto" onclick="slAnnulla()">Annulla</button></div></div>`;
+  } else if (slPendPP) {
+    ph = `<div class="pend"><div class="ttl" style="color:var(--txt)">Palla persa</div>
+      <div class="muted" style="margin-bottom:8px">Tagga giocatrice e gioco (facoltativi), poi conferma.</div>
+      <div class="row"><button class="btn ok" onclick="slCommitPP()">✔︎ Conferma</button>
+      <button class="btn sm" onclick="slAnnulla()">Annulla</button></div></div>`;
+  } else if (slPendTL) {
+    ph = `<div class="pend"><div class="ttl" style="color:var(--txt)">Tiro libero — ${slPendTL.esito.toUpperCase()}</div>
+      <div class="row"><button class="btn ok" onclick="slCommitTL()">✔︎ Conferma</button>
+      <button class="btn sm" onclick="slAnnulla()">Annulla</button></div></div>`;
+  }
+  document.getElementById('slPending').innerHTML = ph;
+
+  const ev = slEventiPartita();
+  let t2 = 0, s2 = 0, t3 = 0, s3 = 0, tl = 0, stl = 0, pp = 0;
+  ev.forEach(e => {
+    if (e.tipo === 'pp') { pp++; return; }
+    if (e.categoria === 'TL') { tl++; if (e.esito === 'segnato') stl++; }
+    else if (e.punti === 3) { t3++; if (e.esito === 'segnato') s3++; }
+    else { t2++; if (e.esito === 'segnato') s2++; }
+  });
+  const pct = (a, b) => b ? (a / b * 100).toFixed(0) + '%' : '—';
+  const byCat = {};
+  ev.forEach(e => { if (e.tipo !== 'tiro' || e.categoria === 'TL') return; byCat[e.categoria] = byCat[e.categoria] || { t: 0, s: 0 }; byCat[e.categoria].t++; if (e.esito === 'segnato') byCat[e.categoria].s++; });
+  document.getElementById('slStats').innerHTML = !ev.length ? '<p class="muted">Nessun evento ancora registrato per questa partita.</p>' :
+    `<table class="st"><tr><th>Voce</th><th>Segnati</th><th>Tentati</th><th>%</th></tr>
+     <tr><td>Da 2</td><td>${s2}</td><td>${t2}</td><td>${pct(s2, t2)}</td></tr>
+     <tr><td>Da 3</td><td>${s3}</td><td>${t3}</td><td>${pct(s3, t3)}</td></tr>
+     <tr><td>Tiri liberi</td><td>${stl}</td><td>${tl}</td><td>${pct(stl, tl)}</td></tr>
+     <tr><td>Palle perse</td><td colspan="3">${pp}</td></tr></table>
+     ${Object.keys(byCat).length ? `<div class="ttl" style="margin-top:12px">Per situazione</div><table class="st">
+       <tr><th>Situazione</th><th>Segnati</th><th>Tentati</th><th>%</th></tr>
+       ${Object.entries(byCat).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.s}</td><td>${v.t}</td><td>${pct(v.s, v.t)}</td></tr>`).join('')}</table>` : ''}`;
+  slDrawCourt();
+}
+
+/* ========================== DATI ========================== */
+function payloadLavagna() { return { lavagnaTattica: DB.lavagnaTattica, lavagnaTatticaSezioni: DB.lavagnaTatticaSezioni }; }
+function payloadScouting() {
+  const sl = DB.scoutingLive;
+  return { eventi: sl.eventi, giochiCustom: sl.giochiCustom, difeseCustom: sl.difeseCustom,
+           giocatriciEscluse: [], partitaCorrente: sl.partitaCorrente, punteggio: sl.punteggio };
+}
+async function scarica(obj, nome) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  // Su iPad il download classico è inaffidabile (in modalità "app dalla Home"
+  // spesso non fa nulla), mentre il foglio di condivisione di iOS permette di
+  // mandare il file al Mac con AirDrop in un passaggio solo. Quindi si prova
+  // prima quello, e si ricade sul download solo dove non è disponibile (Mac).
+  try {
+    const file = new File([blob], nome, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: nome });
+      toast('📤 Inviato');
+      return;
+    }
+  } catch (e) {
+    // l'utente ha chiuso il foglio di condivisione: non è un errore
+    if (e && e.name === 'AbortError') return;
+    // qualunque altro intoppo: si prosegue con il download qui sotto
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = nome; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast('📤 File creato');
+}
+const slug = s => (s || '').trim().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
+function esportaTutto() {
+  const s = slug(DB.scoutingLive.partitaCorrente) || new Date().toISOString().slice(0, 10);
+  scarica(Object.assign({ panchina: 1, esportatoIl: new Date().toISOString() }, payloadLavagna(), payloadScouting()), 'panchina_' + s + '.json');
+}
+function esportaSolo(che) {
+  const s = slug(DB.scoutingLive.partitaCorrente) || new Date().toISOString().slice(0, 10);
+  if (che === 'lavagna') scarica(Object.assign({ panchina: 1, esportatoIl: new Date().toISOString() }, payloadLavagna()), 'lavagna_' + s + '.json');
+  else scarica(Object.assign({ panchina: 1, esportatoIl: new Date().toISOString() }, payloadScouting()), 'scouting_live_' + s + '.json');
+}
+function importaBackup() { document.getElementById('fileImport').click(); }
+function fileImportChange(inp) {
+  const f = inp.files && inp.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      let nl = 0, ne = 0;
+      if (Array.isArray(d.lavagnaTattica)) {
+        const have = new Set(DB.lavagnaTattica.map(x => x && x.id));
+        d.lavagnaTattica.forEach(x => { if (x && !have.has(x.id)) { DB.lavagnaTattica.push(x); nl++; } });
+      }
+      if (Array.isArray(d.lavagnaTatticaSezioni)) d.lavagnaTatticaSezioni.forEach(s => { if (s && !DB.lavagnaTatticaSezioni.includes(s)) DB.lavagnaTatticaSezioni.push(s); });
+      if (Array.isArray(d.eventi)) {
+        const have = new Set(DB.scoutingLive.eventi.map(x => x && x.id));
+        d.eventi.forEach(x => { if (x && !have.has(x.id)) { DB.scoutingLive.eventi.push(x); ne++; } });
+      }
+      ['giochiCustom', 'difeseCustom'].forEach(k => { if (Array.isArray(d[k])) d[k].forEach(v => { if (v && !DB.scoutingLive[k].includes(v)) DB.scoutingLive[k].push(v); }); });
+      save(); lavRender(); slRender(); datiRender();
+      toast('📥 ' + nl + ' disegni, ' + ne + ' eventi');
+    } catch (e) { toast('File non valido', true); }
+  };
+  r.readAsText(f); inp.value = '';
+}
+function azzeraScouting() {
+  if (!confirm('Cancellare TUTTI gli eventi di scouting? Esporta prima se ti servono.')) return;
+  DB.scoutingLive.eventi = []; DB.scoutingLive.punteggio = { noi: 0, avversari: 0 };
+  save(); slRender(); datiRender(); toast('Azzerato');
+}
+function datiRender() {
+  const sl = DB.scoutingLive;
+  const partite = [...new Set(sl.eventi.map(e => e.partita || '(senza nome)'))];
+  let kb = 0; try { kb = Math.round((localStorage.getItem(LS_KEY) || '').length / 1024); } catch (e) { }
+  document.getElementById('datiRiepilogo').innerHTML = `<table class="st">
+    <tr><td>Disegni in archivio</td><td><b>${DB.lavagnaTattica.length}</b></td></tr>
+    <tr><td>Sezioni</td><td>${DB.lavagnaTatticaSezioni.length}</td></tr>
+    <tr><td>Eventi di scouting</td><td><b>${sl.eventi.length}</b></td></tr>
+    <tr><td>Partite registrate</td><td>${partite.length ? esc(partite.join(', ')) : '—'}</td></tr>
+    <tr><td>Spazio usato</td><td>${kb} KB</td></tr></table>`;
+}
+
+/* ========================== AVVIO ========================== */
+load();
+lavRender(); slRender(); datiRender();
+// pointerup copre dito, pennino e mouse con un solo gestore: evita sia il
+// doppio evento (touch + click sintetico) sia il caso opposto, un dispositivo
+// che dichiara il touch ma viene usato col mouse.
+document.getElementById('slCourt').addEventListener('pointerup', function (e) { e.preventDefault(); slCourtTap(e); });
+document.getElementById('slCourt').addEventListener('dblclick', function (e) { e.preventDefault(); });
+// Su iPad il pinch-zoom della pagina rovina il disegno: lo blocchiamo solo qui.
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+/* Registrazione del service worker: è ciò che rende l'app installabile e
+   funzionante senza rete. Se fallisce (o si apre il file in locale, dove i
+   service worker non sono ammessi) l'app continua a funzionare lo stesso:
+   è un miglioramento, non una dipendenza. */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // Se arriva una versione nuova mentre l'app è aperta, la si segnala
+      // invece di sostituirla sotto le mani: in partita non deve succedere.
+      reg.addEventListener('updatefound', () => {
+        const nuovo = reg.installing;
+        if (!nuovo) return;
+        nuovo.addEventListener('statechange', () => {
+          if (nuovo.state === 'installed' && navigator.serviceWorker.controller) {
+            const b = document.createElement('button');
+            b.className = 'btn ok';
+            b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:70px;z-index:1000';
+            b.textContent = '⟳ Nuova versione — tocca per aggiornare';
+            b.onclick = () => location.reload();
+            document.body.appendChild(b);
+          }
+        });
+      });
+    }).catch(() => { /* nessuna rete o hosting senza HTTPS: si prosegue offline */ });
+  });
+}
+</script></body></html>

@@ -1,0 +1,17 @@
+{
+  "name": "PANCHINA — Lavagna tattica & Scouting live",
+  "short_name": "Panchina",
+  "description": "Lavagna tattica e scouting dal vivo, con esportazione dei dati verso ITALBASKET WOMAN.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "lang": "it",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
