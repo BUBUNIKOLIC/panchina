@@ -80,6 +80,14 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:var(--ve);color:#fff;
   padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:700;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
+
+/* --- scouting: attacco a sinistra, campo al centro, difesa a destra --- */
+#slGriglia{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}
+@media (min-width:900px){#slGriglia{grid-template-columns:190px minmax(0,1fr) 190px;align-items:start}}
+#slGriglia .col{margin-bottom:0}
+.colonna{display:flex;flex-direction:column;gap:6px;max-height:62vh;overflow-y:auto}
+.colonna .chip{width:100%;text-align:left}
+@media (max-width:899px){.colonna{flex-direction:row;flex-wrap:wrap}.colonna .chip{width:auto}}
 .fs{position:fixed !important;inset:0;z-index:900;background:var(--bg);padding:8px;overflow-y:auto}
 </style>
 </head>
@@ -134,12 +142,10 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
 
 <!-- ================= SCOUTING ================= -->
 <div id="viewScout" class="view">
-  <div class="card">
+  <div class="card" style="margin-bottom:10px;">
     <div class="row">
       <div style="flex:2;min-width:150px;"><label>Partita</label><input id="slPartita" type="text" placeholder="es. Italia - Belgio" oninput="slSetPartita(this.value)" style="width:100%"></div>
-      <div><label>Quarto</label>
-        <div class="row" id="slQuarti"></div>
-      </div>
+      <div><label>Quarto</label><div class="row" id="slQuarti"></div></div>
       <div style="margin-left:auto;text-align:right;">
         <label>Punteggio</label>
         <div class="row" style="justify-content:flex-end;">
@@ -156,29 +162,39 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
 
   <div id="slPending"></div>
 
-  <div class="card">
-    <div class="ttl">Campo — tocca dove è partito il tiro <span style="text-transform:none;font-weight:500">(un tocco = sbagliato, doppio tocco = segnato)</span></div>
-    <div id="slCourtWrap"><canvas id="slCourt" width="760" height="543"></canvas></div>
-    <div class="row" style="margin-top:10px;">
-      <button class="btn" onclick="slAvviaPP()">🔄 Palla persa</button>
-      <button class="btn" onclick="slAvviaTL('segnato')">🎯 TL segnato</button>
-      <button class="btn" onclick="slAvviaTL('sbagliato')">✖️ TL sbagliato</button>
-      <button class="btn sm" style="margin-left:auto" onclick="slUndo()">↩︎ Annulla ultimo</button>
+  <!-- tre colonne: attacco a sinistra, campo al centro, difesa a destra -->
+  <div id="slGriglia">
+    <div class="card col" id="colAttacco">
+      <div class="ttl">Attacco — giochi
+        <button class="btn sm" style="float:right" onclick="slAddGioco()">＋</button></div>
+      <div class="colonna" id="slGiochi"></div>
+    </div>
+
+    <div class="card col" id="colCampo">
+      <div class="ttl">Campo <span style="text-transform:none;font-weight:500">— un tocco = sbagliato, doppio = segnato</span></div>
+      <div id="slCourtWrap"><canvas id="slCourt" width="760" height="543"></canvas></div>
+      <div class="row" style="margin-top:9px;">
+        <button class="btn" onclick="slAvviaPP()">🔄 Palla persa</button>
+        <button class="btn" onclick="slAvviaTL('segnato')">🎯 TL ✓</button>
+        <button class="btn" onclick="slAvviaTL('sbagliato')">✖️ TL ✗</button>
+        <button class="btn sm" style="margin-left:auto" onclick="slUndo()">↩︎ Annulla</button>
+      </div>
+    </div>
+
+    <div class="card col" id="colDifesa">
+      <div class="ttl">Difesa avversaria
+        <button class="btn sm" style="float:right" onclick="slAddDifesa()">＋</button></div>
+      <div class="colonna" id="slDifese"></div>
     </div>
   </div>
 
   <div class="card">
-    <div class="ttl">Giocatrici <button class="btn sm" style="float:right" onclick="slAddGiocatrice()">＋ aggiungi</button></div>
+    <div class="ttl">Giocatrici
+      <button class="btn sm" style="float:right" onclick="slAddGiocatrice()">＋ aggiungi</button>
+      <button class="btn sm" style="float:right;margin-right:6px" onclick="slCaricaRoster()">↺ roster Italia</button></div>
     <div class="row" id="slGiocatrici"></div>
   </div>
-  <div class="card">
-    <div class="ttl">Difese avversarie <button class="btn sm" style="float:right" onclick="slAddDifesa()">＋ aggiungi</button></div>
-    <div class="row" id="slDifese"></div>
-  </div>
-  <div class="card">
-    <div class="ttl">Giochi / schemi <button class="btn sm" style="float:right" onclick="slAddGioco()">＋ aggiungi</button></div>
-    <div class="row" id="slGiochi"></div>
-  </div>
+
   <div class="card">
     <div class="ttl">Statistiche partita corrente</div>
     <div id="slStats"></div>
@@ -1246,6 +1262,14 @@ function deClearAll() {
    importati in ITALBASKET WOMAN senza conversioni.
    ========================================================================== */
 const LS_KEY = 'panchina_v1';
+
+/* Roster della Nazionale, preso da ITALBASKET WOMAN. Serve solo come punto di
+   partenza: si aggiunge, si toglie e si rinomina tutto dall'app. Le difese
+   sono quelle standard, i giochi restano vuoti perché sono i tuoi. */
+const ROSTER_ITALIA = ['9 Zandalasini','13 Cubaj','0 Keys','8 Verona','23 Spreafico','6 Pasa',
+  '11 Pan','14 Madera','18 Santucci','19 Fassina','22 Futo Andre','77 Kacerik','15 Blasigh',
+  'Zanardi','Osazuwa','E. Villa','M. Villa','Gilli','Conte','Conti'];
+const DIFESE_STANDARD = ['Uomo','Zona 2-3','Zona 3-2','Zona 1-3-1','Match-up','Press tutto campo','Raddoppio'];
 let DB = { lavagnaTattica: [], lavagnaTatticaSezioni: ['Generale'],
            scoutingLive: { eventi: [], giochiCustom: [], difeseCustom: [], giocatrici: [],
                            partitaCorrente: '', quartoCorrente: '1', punteggio: { noi: 0, avversari: 0 } } };
@@ -1270,6 +1294,17 @@ function load() {
       };
     }
   } catch (e) { /* dati illeggibili: si riparte puliti invece di bloccare l'app */ }
+  // primo avvio (o dati mai popolati): metto roster e difese, così l'app è
+  // subito usabile senza mezz'ora di digitazione in palestra
+  if (!DB.scoutingLive.giocatrici.length) DB.scoutingLive.giocatrici = ROSTER_ITALIA.slice();
+  if (!DB.scoutingLive.difeseCustom.length) DB.scoutingLive.difeseCustom = DIFESE_STANDARD.slice();
+}
+function slCaricaRoster() {
+  const g = DB.scoutingLive.giocatrici;
+  let n = 0;
+  ROSTER_ITALIA.forEach(x => { if (!g.includes(x)) { g.push(x); n++; } });
+  save(); slRender();
+  toast(n ? ('Aggiunte ' + n + ' giocatrici') : 'Roster già completo');
 }
 function toast(msg, err) {
   const t = document.getElementById('toast');
@@ -1486,7 +1521,7 @@ function slCourtTap(evt) {
   else { slLastTap = now; slTapTimer = setTimeout(() => { slLastTap = 0; slAvvia('sbagliato'); }, 350); }
 }
 function slAvvia(esito) {
-  slPend = { esito, difesa: null, giocatrice: null, xPct: slXY.x, yPct: slXY.y, punti: slShotValue(slXY.x, slXY.y) };
+  slPend = { esito, difesa: null, giocatrice: null, gioco: null, xPct: slXY.x, yPct: slXY.y, punti: slShotValue(slXY.x, slXY.y) };
   slPendPP = slPendTL = null; slRender();
 }
 function slAvviaPP() { slPendPP = { giocatrice: null, gioco: null }; slPend = slPendTL = null; slRender(); }
@@ -1500,7 +1535,8 @@ function slPushEvento(ev) {
 function slCommitTiro(categoria) {
   if (!slPend) return;
   slPushEvento({ tipo: 'tiro', esito: slPend.esito, categoria, difesa: slPend.difesa,
-                 giocatrice: slPend.giocatrice, xPct: slPend.xPct, yPct: slPend.yPct, punti: slPend.punti });
+                 giocatrice: slPend.giocatrice, gioco: slPend.gioco,
+                 xPct: slPend.xPct, yPct: slPend.yPct, punti: slPend.punti });
   if (slPend.esito === 'segnato') DB.scoutingLive.punteggio.noi += slPend.punti;
   slPend = null; save(); slRender(); toast('✔︎ Registrato');
 }
@@ -1528,7 +1564,12 @@ function slTagGioc(n) {
   t.giocatrice = t.giocatrice === n ? null : n; slRender();
 }
 function slTagDif(n) { if (!slPend) return; slPend.difesa = slPend.difesa === n ? null : n; slRender(); }
-function slTagGioco(n) { if (!slPendPP) return; slPendPP.gioco = slPendPP.gioco === n ? null : n; slRender(); }
+function slTagGioco(n) {
+  // il gioco vale sia per una palla persa sia per un tiro: sapere da quale
+  // schema nasce la conclusione è metà del valore dello scouting dal vivo
+  const t = slPendPP || slPend; if (!t) return;
+  t.gioco = t.gioco === n ? null : n; slRender();
+}
 function slSetPartita(v) { DB.scoutingLive.partitaCorrente = v; save(); }
 function slSetQuarto(q) { DB.scoutingLive.quartoCorrente = q; save(); slRender(); }
 function slPunti(chi, d) { const p = DB.scoutingLive.punteggio; p[chi] = Math.max(0, (p[chi] || 0) + d); save(); slRender(); }
@@ -1562,8 +1603,9 @@ function slRender() {
   }).join('') : '<span class="muted">Nessuna giocatrice: tocca «＋ aggiungi». Doppio tocco su una per toglierla.</span>';
   document.getElementById('slDifese').innerHTML = sl.difeseCustom.length ? sl.difeseCustom.map(n =>
     `<button class="chip${slPend && slPend.difesa === n ? ' on' : ''}" onclick="slTagDif('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('difeseCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}</button>`).join('') : '<span class="muted">Nessuna difesa inserita.</span>';
+  const gsel = (slPendPP || slPend || {}).gioco;
   document.getElementById('slGiochi').innerHTML = sl.giochiCustom.length ? sl.giochiCustom.map(n =>
-    `<button class="chip${slPendPP && slPendPP.gioco === n ? ' on' : ''}" onclick="slTagGioco('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giochiCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}</button>`).join('') : '<span class="muted">Nessun gioco inserito.</span>';
+    `<button class="chip${gsel === n ? ' on' : ''}" onclick="slTagGioco('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giochiCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}</button>`).join('') : '<span class="muted">Nessun gioco. Tocca ＋ per aggiungere i tuoi schemi.</span>';
 
   let ph = '';
   if (slPend) {
