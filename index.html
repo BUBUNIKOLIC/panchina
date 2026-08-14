@@ -16,7 +16,7 @@
 :root{--bg:#0b1220;--panel:#111c30;--panel2:#16243c;--line:#27364f;--txt:#e9eff8;--muted:#8fa3bf;
       --az:#2f7fd8;--ro:#e0344c;--ve:#2fa35c;--am:#e0a13a;
       /* larghezza del campo in unità di altezza schermo: si cambia da qui */
-      --campo:78;
+      --campo:70;
       /* la lavagna tattica puo' essere piu' grande del campo di scouting:
          la si disegna, non la si tocca al volo durante la partita */
       --campo-lav:96}
@@ -53,6 +53,8 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px}
 .de-tool-btn{padding:9px 13px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);
   color:var(--txt);font-size:13.5px;font-weight:700;white-space:nowrap}
 .de-tool-btn.active{background:var(--az);border-color:var(--az);color:#fff}
+.numpad{display:inline-flex;gap:4px;padding:3px 6px;border-radius:12px;background:rgba(255,255,255,.05)}
+.de-tool-btn.num{padding:9px 12px;min-width:38px;text-align:center;font-size:15px}
 .de-canvas-wrap{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#0a1830;
   /* Il campo è legato all'ALTEZZA dello schermo, non alla larghezza: così su
      iPad resta sempre visibile insieme alla barra degli strumenti, senza dover
@@ -93,13 +95,27 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
 #slGriglia{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}
 @media (min-width:900px){#slGriglia{grid-template-columns:215px minmax(0,1fr) 215px;align-items:start}}
 #slGriglia .col{margin-bottom:0}
-.colonna{display:flex;flex-direction:column;gap:6px;max-height:62vh;overflow-y:auto}
+.colonna{display:flex;flex-direction:column;gap:6px;max-height:66vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* con liste lunghe (18 giochi) la colonna scorre da sola invece di allungare
+   la pagina e spingere il campo fuori dallo schermo */
+#slGiocatrici{max-height:17vh;overflow-y:auto;-webkit-overflow-scrolling:touch;gap:5px}
+/* nello scouting i chip delle giocatrici sono piu' compatti: devono starci
+   tutte a video insieme al campo, senza scorrere la pagina */
+#slGiocatrici .chip{padding:6px 10px;font-size:13px}
+#slGiocatrici .chip .st{margin-left:5px;padding:0 4px;font-size:11px}
 .colonna .chip{width:100%;text-align:left}
 /* nelle colonne laterali le statistiche vanno a capo sotto al nome, se no
    escono dalla casella e non si leggono */
-.colonna .chip .st{display:block;margin-left:0;margin-top:5px;width:fit-content}
+.colonna .chip .st{display:block;margin-left:0;margin-top:5px;width:fit-content;max-width:100%;font-size:11px;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:899px){.colonna{flex-direction:row;flex-wrap:wrap}.colonna .chip{width:auto}}
 .fs{position:fixed !important;inset:0;z-index:900;background:var(--bg);padding:8px;overflow-y:auto}
+table.st.inc td, table.st.inc th { white-space:nowrap; font-size:12px; padding:4px 8px; }
+table.st.inc td.vuota { opacity:.28; text-align:center; }
+table.st.inc td.cella { line-height:1.25; }
+table.st.inc td.cella .pc { opacity:.75; font-size:11px; }
+table.st.inc td.cella .pp { display:block; font-size:10.5px; opacity:.62; }
+table.st.inc td.cella.buona { background:rgba(61,220,132,0.16); box-shadow:inset 3px 0 0 #3ddc84; }
+table.st.inc td.cella.scarsa { background:rgba(255,95,109,0.15); box-shadow:inset 3px 0 0 #ff5f6d; }
 </style>
 </head>
 <body>
@@ -129,15 +145,26 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
       <button class="btn sm" onclick="lavChiudi()">← Archivio</button>
       <button class="de-tool-btn active" data-tool="penna" onclick="deSetTool('penna')">✏️ Penna</button>
       <button class="de-tool-btn" data-tool="gomma" onclick="deSetTool('gomma')">🧽 Gomma</button>
-      <button class="de-tool-btn" data-tool="off" onclick="deSetTool('off')" title="Tocca sul campo per posizionare una giocatrice numerata: si può mettere anche fuori dalle linee, per chi batte la rimessa">⬤ Giocatrice</button>
       <button class="de-tool-btn" data-tool="def" onclick="deSetTool('def')" title="Tocca sul campo per posizionare un difensore (X1, X2...)">⭘ Difensore</button>
+      <span class="numpad" title="Scegli il numero e poi tocca il campo: la giocatrice esce stampata, senza scriverla a mano"><b style="font-size:11px;opacity:.7;margin-right:4px">N°</b>
+        <button class="de-tool-btn num" data-num="1" onclick="lavNumero(1)">1</button>
+        <button class="de-tool-btn num" data-num="2" onclick="lavNumero(2)">2</button>
+        <button class="de-tool-btn num" data-num="3" onclick="lavNumero(3)">3</button>
+        <button class="de-tool-btn num" data-num="4" onclick="lavNumero(4)">4</button>
+        <button class="de-tool-btn num" data-num="5" onclick="lavNumero(5)">5</button>
+      </span>
       <button class="de-tool-btn" data-tool="select" onclick="deSetTool('select')" title="Trascina per spostare quello che hai già messo">↖ Sposta</button>
-      <button class="de-tool-btn active" id="lavAutoBtn" onclick="lavToggleAuto()" title="Acceso: quello che disegni a mano libera diventa da solo il simbolo giusto — cerchio, numero 1-5, linea continua, tratteggiata (più trattini in fila), palleggio, blocco, tiro. Spento: la penna disegna e basta.">✨ Auto</button>
+      <button class="de-tool-btn active" id="lavAutoBtn" onclick="lavToggleAuto()" title="Acceso: quello che disegni a mano libera diventa da solo il simbolo giusto — linea continua, tratteggiata (più trattini in fila), palleggio, blocco, tiro, consegnato. I numeri NON vengono interpretati: si scrivono a mano o con la tastierina. Spento: la penna disegna e basta.">✨ Auto</button>
       <button class="btn sm" onclick="deUndo()">↩︎ Annulla</button>
       <button class="btn sm" onclick="deClear()">Pulisci fase</button>
       <button class="btn sm" onclick="lavToggleMode()" id="lavModeBtn">Mezzo campo</button>
       <button class="btn sm" onclick="lavToggleFs()" id="lavFsBtn">⛶ Schermo intero</button>
       <button class="btn ok" style="margin-left:auto" onclick="lavSalva()">💾 Salva</button>
+    </div>
+    <div class="muted" style="font-size:12px;margin:-2px 0 8px 2px;line-height:1.45">
+      <b>Numeri:</b> tocca <b>1-5</b> e poi il campo → esce la giocatrice (anche fuori dalle linee, per la rimessa).
+      Tocca una giocatrice già messa per farle cambiare numero. Cerchiala per dire che <b>ha la palla</b>.
+      <b>Difensori:</b> tasto ⭘ e poi il campo.
     </div>
     <div class="frametabs" id="lavFrameTabs"></div>
     <div id="lavCanvasHost"></div>
@@ -158,7 +185,12 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
 <div id="viewScout" class="view">
   <div class="card" style="margin-bottom:10px;">
     <div class="row">
-      <div style="flex:2;min-width:150px;"><label>Partita</label><input id="slPartita" type="text" placeholder="es. Italia - Belgio" oninput="slSetPartita(this.value)" style="width:100%"></div>
+      <div style="flex:2;min-width:190px;"><label>Partita</label>
+        <div class="row" style="gap:6px;flex-wrap:nowrap;">
+          <select id="slPartita" onchange="slCambiaPartita(this.value)" style="flex:1;min-width:0;"></select>
+          <button class="btn sm ok" onclick="slNuovaPartita()" title="Comincia una partita nuova: punteggio a 0, primo quarto. Le vecchie restano, ci torni dal menu.">🆕 Nuova</button>
+          <button class="btn sm" onclick="slRinominaPartita()" title="Rinomina la partita in corso">✏️</button>
+        </div></div>
       <div><label>Quarto</label><div class="row" id="slQuarti"></div></div>
       <div style="margin-left:auto;text-align:right;">
         <label>Punteggio</label>
@@ -180,12 +212,13 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
   <div id="slGriglia">
     <div class="card col" id="colAttacco">
       <div class="ttl">Attacco — giochi
-        <button class="btn sm" style="float:right" onclick="slAddGioco()">＋</button></div>
+        <button class="btn sm" style="float:right" onclick="slAddGioco()">＋</button>
+        <button class="btn sm" style="float:right;margin-right:6px" onclick="slRipristina('giochiCustom')" title="Rimette la lista di partenza">↺</button></div>
       <div class="colonna" id="slGiochi"></div>
     </div>
 
     <div class="card col" id="colCampo">
-      <div class="ttl">Campo <span style="text-transform:none;font-weight:500">— un tocco = sbagliato, doppio = segnato</span></div>
+      <div class="ttl">Campo <span style="text-transform:none;font-weight:500">— 1 tocco = tiro sbagliato, 2 tocchi = canestro. Poi tocca gioco e giocatrice.</span></div>
       <div id="slCourtWrap"><canvas id="slCourt" width="760" height="543"></canvas></div>
       <div class="row" style="margin-top:9px;">
         <button class="btn" onclick="slAvviaPP()">🔄 Palla persa</button>
@@ -193,20 +226,20 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
         <button class="btn" onclick="slAvviaTL('sbagliato')">✖️ TL ✗</button>
         <button class="btn sm" style="margin-left:auto" onclick="slUndo()">↩︎ Annulla</button>
       </div>
+      <!-- le giocatrici stanno QUI, attaccate al campo: durante la partita
+           devono essere sotto il pollice, non in fondo alla pagina -->
+      <div class="ttl" style="margin-top:12px;">Giocatrici
+        <button class="btn sm" style="float:right" onclick="slAddGiocatrice()">＋</button>
+        <button class="btn sm" style="float:right;margin-right:6px" onclick="slCaricaRoster()">↺ Italia</button></div>
+      <div class="row" id="slGiocatrici"></div>
     </div>
 
     <div class="card col" id="colDifesa">
-      <div class="ttl">Difesa avversaria
-        <button class="btn sm" style="float:right" onclick="slAddDifesa()">＋</button></div>
+      <div class="ttl">Difese subite <span style="text-transform:none;font-weight:500">— 1 tocco = sbagliano, 2 = canestro subito, 3 = fallo nostro</span>
+        <button class="btn sm" style="float:right" onclick="slAddDifesa()">＋</button>
+        <button class="btn sm" style="float:right;margin-right:6px" onclick="slRipristina('difeseCustom')" title="Rimette la lista di partenza">↺</button></div>
       <div class="colonna" id="slDifese"></div>
     </div>
-  </div>
-
-  <div class="card">
-    <div class="ttl">Giocatrici
-      <button class="btn sm" style="float:right" onclick="slAddGiocatrice()">＋ aggiungi</button>
-      <button class="btn sm" style="float:right;margin-right:6px" onclick="slCaricaRoster()">↺ roster Italia</button></div>
-    <div class="row" id="slGiocatrici"></div>
   </div>
 
   <div class="card">
@@ -460,7 +493,10 @@ function deDrawElement(ctx, el, preview, dark) {
     } else if (circled) {
       ctx.beginPath();
       ctx.arc(el.x, el.y, 30, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff'; ctx.fill();
+      // Sul campo scuro il numero e' bianco: riempire di bianco lo faceva
+      // sparire. Qui il disco prende il colore della lavagna e resta il
+      // cerchio bianco attorno al numero, che e' quello che serve vedere.
+      ctx.fillStyle = dark ? '#0e1c33' : '#fff'; ctx.fill();
       ctx.strokeStyle = color; ctx.lineWidth = 3.2; ctx.stroke();
       ctx.fillStyle = color; ctx.font = 'bold 25px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(el.label || '', el.x, el.y);
@@ -805,6 +841,8 @@ function deOnDown(evt) {
     const idx = deHitTest(p.x, p.y);
     deState.dragging = idx >= 0 ? idx : null;
     deState.dragLast = idx >= 0 ? p : null;
+    deState.dragStart = idx >= 0 ? p : null;
+    deState.dragMosso = false;
     return;
   }
   if (tool === 'penna') {
@@ -865,7 +903,7 @@ function deOnDown(evt) {
   // solo un click su spazio vuoto crea un nuovo elemento con lo strumento scelto.
   if (tool === 'off' || tool === 'def' || tool === 'staff' || tool === 'screen' || tool === 'shot' || tool === 'testo' || tool === 'handoff') {
     const hitIdx = deHitTest(p.x, p.y);
-    if (hitIdx >= 0) { deState.dragging = hitIdx; return; }
+    if (hitIdx >= 0) { deState.dragging = hitIdx; deState.dragLast = p; deState.dragStart = p; deState.dragMosso = false; return; }
   }
   if (tool === 'off' || tool === 'def') {
     const key = tool === 'off' ? 'offCount' : 'defCount';
@@ -877,7 +915,19 @@ function deOnDown(evt) {
       return;
     }
     frame[key]++;
-    frame.elements.push({ type: 'player', team: tool, x: p.x, y: p.y, label: tool === 'off' ? String(frame[key]) : ('X' + frame[key]), hasBall: false });
+    // Se sulla barra e' stato scelto un numero (tastierina 1-5), quello vince:
+    // e' il modo sicuro di mettere la giocatrice giusta senza scriverla a mano.
+    const etichetta = (tool === 'off' && deState.numeroForzato)
+      ? String(deState.numeroForzato)
+      : (tool === 'off' ? String(frame[key]) : ('X' + frame[key]));
+    frame.elements.push({ type: 'player', team: tool, x: p.x, y: p.y, label: etichetta, hasBall: false });
+    // Dopo aver messo la 1 il tasto passa da solo alla 2, poi alla 3...: si
+    // mette tutto il quintetto toccando solo il campo, senza tornare sulla
+    // barra ogni volta. Oltre la 5 il numero si libera.
+    if (tool === 'off' && deState.numeroForzato) {
+      deState.numeroForzato = deState.numeroForzato < 5 ? deState.numeroForzato + 1 : null;
+      if (typeof lavAggiornaNumpad === 'function') lavAggiornaNumpad();
+    }
     deRedraw();
     return;
   }
@@ -931,6 +981,7 @@ function deOnMove(evt) {
   const frame = deCur();
   if (deState.dragging != null) {
     evt.preventDefault();
+    if (deState.dragStart && Math.hypot(p.x - deState.dragStart.x, p.y - deState.dragStart.y) > 6) deState.dragMosso = true;
     const el = frame.elements[deState.dragging];
     if (el.points) {
       // Trascina un tratto libero/taglio/palleggio/passaggio intero: sposta
@@ -991,8 +1042,21 @@ function deOnUp(evt) {
     }
     if (!liftedIsActive) return;
   }
+  // Tocco secco (senza trascinare) su una giocatrice: le gira il numero
+  // 1->2->3->4->5. È la scorciatoia che salva quando il riconoscimento della
+  // cifra sbaglia: invece di cancellare e riscrivere, un tocco e via.
+  if (deState.dragging != null && !deState.dragMosso) {
+    const el = deCur().elements[deState.dragging];
+    if (el && el.type === 'player' && el.team === 'off') {
+      const n = parseInt(el.label, 10);
+      el.label = String(n >= 1 && n < 5 ? n + 1 : 1);
+      deRedraw();
+    }
+  }
   deState.dragging = null;
   deState.dragLast = null;
+  deState.dragStart = null;
+  deState.dragMosso = false;
   if (deState.penDown && deState.pendingPath && deState.pendingPath.type === 'freehand') {
     // Si solleva il dito/la penna: il tratto libero finisce qui da solo,
     // niente bisogno di un secondo tocco su "Fine tratto" come per
@@ -1332,11 +1396,76 @@ function deGeoDirezione(pts, da, a) {  // vettore medio fra due indici
    Con dieci candidati il modello confondeva 1/7, 3/8, 5/6. Sul campo servono
    solo i numeri da 1 a 5: si guarda quindi la probabilità SOLO fra quelli, e
    si accetta se il primo stacca nettamente il secondo. */
-function deAutoCifra(pts) {
+// Un "4" quasi sempre si incrocia (l'asta verticale taglia la barretta), un
+// "5" no: e' il modo piu' affidabile per separarli quando il modello e'
+// indeciso -- che era proprio l'errore che si vedeva sul campo (scrivevi 5 e
+// usciva 4).
+function deGeoSiIncrocia(strokes) {
+  const seg = [];
+  strokes.forEach((pts, si) => {
+    for (let i = 1; i < pts.length; i++) seg.push({ a: pts[i - 1], b: pts[i], s: si, i: i });
+  });
+  const lato = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  for (let i = 0; i < seg.length; i++) {
+    for (let j = i + 1; j < seg.length; j++) {
+      // segmenti consecutivi dello stesso tratto: si toccano per forza
+      if (seg[i].s === seg[j].s && Math.abs(seg[i].i - seg[j].i) <= 2) continue;
+      const p1 = seg[i].a, p2 = seg[i].b, p3 = seg[j].a, p4 = seg[j].b;
+      const d1 = lato(p3, p4, p1), d2 = lato(p3, p4, p2);
+      const d3 = lato(p1, p2, p3), d4 = lato(p1, p2, p4);
+      if (((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0))) return true;
+    }
+  }
+  return false;
+}
+// Come deRasterizeStrokeFor8x8 ma con PIU' tratti: ognuno viene disegnato per
+// conto suo. Attaccandoli in un unico elenco di punti si creava una riga
+// fantasma dall'ultimo punto di un tratto al primo del successivo -- ed era
+// quella a far leggere male le cifre scritte in due tempi (il 4 e il 5).
+function deRasterizeStrokesFor8x8(strokes) {
+  const CANVAS = 32, TARGET = 8, MARGIN = 6, LINE_W = 3;
+  const tutti = [].concat.apply([], strokes);
+  const xs = tutti.map(p => p.x), ys = tutti.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
+  const avail = CANVAS - 2 * MARGIN;
+  const scale = avail / Math.max(w, h);
+  const offX = MARGIN + (avail - w * scale) / 2;
+  const offY = MARGIN + (avail - h * scale) / 2;
+  const off = document.createElement('canvas');
+  off.width = CANVAS; off.height = CANVAS;
+  const octx = off.getContext('2d');
+  octx.fillStyle = '#000'; octx.fillRect(0, 0, CANVAS, CANVAS);
+  octx.strokeStyle = '#fff'; octx.lineWidth = LINE_W; octx.lineCap = 'round'; octx.lineJoin = 'round';
+  strokes.forEach(pts => {
+    octx.beginPath();
+    pts.forEach((p, i) => {
+      const px = (p.x - minX) * scale + offX, py = (p.y - minY) * scale + offY;
+      if (i === 0) octx.moveTo(px, py); else octx.lineTo(px, py);
+    });
+    octx.stroke();
+  });
+  const img = octx.getImageData(0, 0, CANVAS, CANVAS).data;
+  const block = CANVAS / TARGET;
+  const vec = new Array(TARGET * TARGET);
+  for (let ty = 0; ty < TARGET; ty++) {
+    for (let tx = 0; tx < TARGET; tx++) {
+      let sum = 0;
+      for (let by = 0; by < block; by++) {
+        for (let bx = 0; bx < block; bx++) sum += img[((ty * block + by) * CANVAS + (tx * block + bx)) * 4];
+      }
+      vec[ty * TARGET + tx] = (sum / (block * block)) / 255;
+    }
+  }
+  return vec;
+}
+function deAutoCifra(pts, strokes) {
   const box = deGeoBox(pts);
   const big = Math.max(box.w, box.h);
   if (big < 14 || big > 130) return null;
-  const vec = deRasterizeStrokeFor8x8(pts);
+  const tratti = (strokes && strokes.length) ? strokes : [pts];
+  const vec = deRasterizeStrokesFor8x8(tratti);
   const m = DE_DIGIT_MODEL;
   const hidden = new Array(m.b1.length);
   for (let j = 0; j < m.b1.length; j++) {
@@ -1359,9 +1488,20 @@ function deAutoCifra(pts) {
   let i1 = 0;
   for (let i = 1; i < probs.length; i++) if (probs[i] > probs[i1]) i1 = i;
   const p1 = probs[i1];
-  const p2 = Math.max(...probs.filter((_, i) => i !== i1));
+  let i2 = -1;
+  for (let i = 0; i < probs.length; i++) if (i !== i1 && (i2 < 0 || probs[i] > probs[i2])) i2 = i;
+  const p2 = probs[i2];
+  let scelta = cand[i1];
+
+  // Fra 1 e 5 c'e' UNA sola cifra che si incrocia: il 4 (l'asta verticale
+  // taglia la barretta). Questo controllo geometrico e' molto piu' affidabile
+  // del modello, che confondeva 4 con 5 e con 1 -- l'errore che si vedeva sul
+  // campo. Si applica in tutte e due le direzioni.
+  const incrocia = deGeoSiIncrocia(tratti);
+  if (incrocia && probs[3] >= 0.12) return { cifra: 4, cx: box.cx, cy: box.cy };
   if (p1 < 0.40 || p1 < p2 * 1.45) return null;
-  return { cifra: cand[i1], cx: box.cx, cy: box.cy };
+  if (scelta === 4 && !incrocia) scelta = 5;
+  return { cifra: scelta, cx: box.cx, cy: box.cy };
 }
 
 /* ---------- aiuti sul campo ---------- */
@@ -1467,8 +1607,9 @@ function deAutoSingolo(pts) {
         deCur().elements[idx].hasBall = true;
         return { tipo: 'palla in mano a ' + (deCur().elements[idx].label || ''), elementi: [] };
       }
-      return { tipo: 'giocatrice', elementi: [{ type: 'player', team: 'off', x: box.cx, y: box.cy,
-                                               label: deAutoProssimoNumero(), hasBall: false }] };
+      // cerchio nel vuoto: resta il segno che hai fatto, niente numeri a
+      // sorpresa. Per mettere una giocatrice si usa la tastierina 1-5.
+      return null;
     }
   }
 
@@ -1476,27 +1617,6 @@ function deAutoSingolo(pts) {
   if (inv.cambi >= 4 && asse.span > 55 && inv.ampiezza < asse.span * 0.30) {
     const a = pts[0], b = pts[pts.length - 1];
     return { tipo: 'palleggio', elementi: [{ type: 'path', kind: 'palleggio', points: [a, b] }] };
-  }
-
-  // --- cifra 1-5: si prova PRIMA delle linee, perche' un "1" scritto a mano
-  // e' anche un tratto dritto verticale. Vale solo sui segni piccoli: una
-  // linea tattica e' quasi sempre piu' lunga di cosi'. Un trattino corto ma
-  // ORIZZONTALE resta una linea, non e' una cifra.
-  if (box.diag < 96) {
-    const fin = pts[pts.length - 1];
-    const orizzontale = Math.abs(fin.x - pts[0].x) > Math.abs(fin.y - pts[0].y) * 1.2;
-    if (!(orizzontale && deStrokeStraightnessRatio(pts) > 0.90)) {
-      const c0 = deAutoCifra(pts);
-      if (c0) {
-        const i0 = deAutoGiocatriceVicina(c0.cx, c0.cy, 42);
-        if (i0 >= 0) {
-          deCur().elements[i0].label = String(c0.cifra);
-          return { tipo: 'numero ' + c0.cifra, elementi: [] };
-        }
-        return { tipo: 'giocatrice ' + c0.cifra, elementi: [
-          { type: 'player', team: 'off', x: c0.cx, y: c0.cy, label: String(c0.cifra), hasBall: false }] };
-      }
-    }
   }
 
   // --- tratto dritto (con eventuale coda speciale in fondo)
@@ -1520,7 +1640,10 @@ function deAutoSingolo(pts) {
       return { tipo: 'blocco', elementi: [{ type: 'path', kind: 'bloccolinea', points: [pts[0], fine] }] };
     }
     const a = pts[0], b = pts[pts.length - 1];
-    if (Math.hypot(b.x - a.x, b.y - a.y) < 26) return null;   // troppo corto: lascialo com'è
+    // Sotto i 65px non lo si trasforma in una linea tattica: a quella misura
+    // e' quasi sempre un pezzo di qualcosa scritto a mano (l'asta di un 4,
+    // la barra di un 5) e va lasciato esattamente com'e' stato disegnato.
+    if (Math.hypot(b.x - a.x, b.y - a.y) < 65) return null;
     // finisce sul ferro = tiro
     const cane = deAutoCanestro();
     if (cane && Math.hypot(b.x - cane.x, b.y - cane.y) < 58 && lung > 70) {
@@ -1531,19 +1654,6 @@ function deAutoSingolo(pts) {
     return { tipo: 'linea continua', elementi: [{ type: 'path', kind: 'taglio', points: [a, b] }] };
   }
 
-  // --- cifra 1-5 su tratti piccoli e compatti
-  if (box.diag < 110) {
-    const c = deAutoCifra(pts);
-    if (c) {
-      const idx = deAutoGiocatriceVicina(c.cx, c.cy, 42);
-      if (idx >= 0) {
-        deCur().elements[idx].label = String(c.cifra);
-        return { tipo: 'numero ' + c.cifra, elementi: [] };
-      }
-      return { tipo: 'giocatrice ' + c.cifra, elementi: [
-        { type: 'player', team: 'off', x: c.cx, y: c.cy, label: String(c.cifra), hasBall: false }] };
-    }
-  }
   return null;
 }
 
@@ -1554,18 +1664,6 @@ function deAutoClassifica(strokes) {
     if (consegnato) return consegnato;
     const tratteggio = deAutoTratteggio(strokes);
     if (tratteggio) return tratteggio;
-    // cifre scritte in due tratti (il 4 e il 5 spesso lo sono)
-    const tutti = [].concat.apply([], strokes);
-    const box = deGeoBox(tutti);
-    if (box.diag < 110) {
-      const c = deAutoCifra(tutti);
-      if (c) {
-        const idx = deAutoGiocatriceVicina(c.cx, c.cy, 42);
-        if (idx >= 0) { deCur().elements[idx].label = String(c.cifra); return { tipo: 'numero ' + c.cifra, elementi: [] }; }
-        return { tipo: 'giocatrice ' + c.cifra, elementi: [
-          { type: 'player', team: 'off', x: c.cx, y: c.cy, label: String(c.cifra), hasBall: false }] };
-      }
-    }
     return null;
   }
   return deAutoSingolo(strokes[0]);
@@ -1580,21 +1678,41 @@ function deAutoFlush() {
   frame.elements = frame.elements.filter(e => !e._auto);      // via le anteprime grezze
   const esito = deAutoClassifica(strokes);
   if (esito) {
-    esito.elementi.forEach(e => frame.elements.push(e));
-    if (esito.elementi.some(e => e.type === 'player')) {
-      const n = parseInt(esito.elementi.find(e => e.type === 'player').label, 10);
-      if (n > 0) frame.offCount = Math.max(frame.offCount || 0, n);
-    }
-    if (deAutoAvviso) deAutoAvviso(esito.tipo);
+    deAutoDeposita(frame, esito);
   } else {
-    strokes.forEach(p => frame.elements.push({ type: 'freehand', points: deSmoothPoints(deSimplifyPoints(p, 2.2), 2) }));
+    // Il gruppo insieme non vuol dire niente: allora si guarda un tratto per
+    // volta. Cosi' due segni disegnati di fila restano riconosciuti tutti e
+    // due, invece di annullarsi a vicenda.
+    strokes.forEach(p => {
+      const solo = deAutoSingolo(p);
+      if (solo) deAutoDeposita(frame, solo);
+      else frame.elements.push({ type: 'freehand', points: deSmoothPoints(deSimplifyPoints(p, 2.2), 2) });
+    });
   }
   deRedraw();
+}
+function deAutoDeposita(frame, esito) {
+  esito.elementi.forEach(e => frame.elements.push(e));
+  const g = esito.elementi.find(e => e.type === 'player');
+  if (g) {
+    const n = parseInt(g.label, 10);
+    if (n > 0) frame.offCount = Math.max(frame.offCount || 0, n);
+  }
+  if (deAutoAvviso) deAutoAvviso(esito.tipo);
 }
 function deAutoFlushSubito() {
   if (deAutoTimer) { clearTimeout(deAutoTimer); deAutoFlush(); }
 }
 function deAutoAggiungi(points) {
+  // Un segno disegnato LONTANO dal precedente non c'entra niente con lui:
+  // si chiude subito il gruppo aperto invece di mischiarli.
+  if (deAutoBuf.length) {
+    const bPrec = deGeoBox([].concat.apply([], deAutoBuf));
+    const bNuovo = deGeoBox(points);
+    const gapX = Math.max(0, Math.max(bPrec.x0 - bNuovo.x1, bNuovo.x0 - bPrec.x1));
+    const gapY = Math.max(0, Math.max(bPrec.y0 - bNuovo.y1, bNuovo.y0 - bPrec.y1));
+    if (Math.hypot(gapX, gapY) > 150) deAutoFlushSubito();
+  }
   deAutoBuf.push(points.slice());
   deCur().elements.push({ type: 'freehand', points: points.slice(), _auto: true });
   if (deAutoTimer) clearTimeout(deAutoTimer);
@@ -1714,10 +1832,22 @@ function fuoriRaduno(n) {
   const c = String(n || '').replace(/^\s*\d+\s+/, '').trim().toLowerCase();
   return FUORI_RADUNO.some(x => x.toLowerCase() === c);
 }
-const DIFESE_STANDARD = ['Uomo','Zona 2-3','Zona 3-2','Zona 1-3-1','Match-up','Press tutto campo','Raddoppio'];
+/* Liste di partenza: sono LE TUE, quelle che usi davvero in panchina.
+   Si aggiungono con «＋», si tolgono con doppio tocco, e con «↺ base» si
+   rimette la lista di partenza. Tutto quello che cambi resta salvato
+   sull'iPad da solo: non c'è niente da premere per salvare. */
+const GIOCHI_STANDARD = ['CONTROPIEDE', 'TRANSIZIONE', 'DRAG', '#BASE', '#BASE 1', '#BASE 5',
+  '#2 ALTO', '#2 LATO', '#5 BASSO', '#5 LATO', '#POLLICE', '#POLLICE BASSO', '#ELLE', '#CORNA',
+  'RIMESSA FONDO', 'RIMESSA LATO', 'CASUALE', 'VS ZONA'];
+const DIFESE_STANDARD = ['DIFESA CP', 'VS TRANSIZIONE', 'DIFESA AREA', 'DIFESA POST BASSO',
+  'DIFESA 1C1 FRONTE', 'USCITA BLOCCHI', 'FLARE', 'PICK CENTRALE', 'PICK LATERALE', 'RIM. OFF.'];
+// Le difese generiche della primissima versione: se sono ancora quelle
+// intatte le sostituisco con le tue, senza chiedere niente.
+const DIFESE_VECCHIE = ['Uomo', 'Zona 2-3', 'Zona 3-2', 'Zona 1-3-1', 'Match-up', 'Press tutto campo', 'Raddoppio'];
 let DB = { lavagnaTattica: [], lavagnaTatticaSezioni: ['Generale'],
            scoutingLive: { eventi: [], giochiCustom: [], difeseCustom: [], giocatrici: [],
-                           partitaCorrente: '', quartoCorrente: '1', punteggio: { noi: 0, avversari: 0 } } };
+                           partitaCorrente: '', quartoCorrente: '1', punteggio: { noi: 0, avversari: 0 },
+                           punteggioManuale: {} } };
 
 function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(DB)); } catch (e) { toast('⚠️ Memoria piena', true); } }
 function load() {
@@ -1735,14 +1865,41 @@ function load() {
         giocatrici: Array.isArray(s.giocatrici) ? s.giocatrici : [],
         partitaCorrente: s.partitaCorrente || '',
         quartoCorrente: s.quartoCorrente || '1',
-        punteggio: (s.punteggio && typeof s.punteggio === 'object') ? s.punteggio : { noi: 0, avversari: 0 }
+        punteggio: (s.punteggio && typeof s.punteggio === 'object') ? s.punteggio : { noi: 0, avversari: 0 },
+        punteggioManuale: (s.punteggioManuale && typeof s.punteggioManuale === 'object') ? s.punteggioManuale : {},
+        listeBase: s.listeBase || 0
       };
     }
   } catch (e) { /* dati illeggibili: si riparte puliti invece di bloccare l'app */ }
   // primo avvio (o dati mai popolati): metto roster e difese, così l'app è
   // subito usabile senza mezz'ora di digitazione in palestra
   if (!DB.scoutingLive.giocatrici.length) DB.scoutingLive.giocatrici = ROSTER_ITALIA.slice();
-  if (!DB.scoutingLive.difeseCustom.length) DB.scoutingLive.difeseCustom = DIFESE_STANDARD.slice();
+  // Le liste di partenza vanno messe UNA VOLTA SOLA, e vanno messe anche a chi
+  // l'app la usava gia'. Prima si riempivano solo se la lista era vuota: se
+  // avevi aggiunto anche una sola voce a mano (era il caso di «contropiede»),
+  // le tue diciotto non arrivavano mai. Da qui in poi il segno «listeBase»
+  // dice che il travaso e' gia' stato fatto, e le tue modifiche non si toccano.
+  if (!DB.scoutingLive.listeBase) {
+    const miei = DB.scoutingLive.giochiCustom.filter(
+      x => !GIOCHI_STANDARD.some(s => s.toLowerCase() === String(x).trim().toLowerCase()));
+    DB.scoutingLive.giochiCustom = GIOCHI_STANDARD.concat(miei);
+    const vecchie = DB.scoutingLive.difeseCustom.join('|') === DIFESE_VECCHIE.join('|');
+    const mieD = vecchie ? [] : DB.scoutingLive.difeseCustom.filter(
+      x => !DIFESE_STANDARD.some(s => s.toLowerCase() === String(x).trim().toLowerCase()));
+    DB.scoutingLive.difeseCustom = DIFESE_STANDARD.concat(mieD);
+    DB.scoutingLive.listeBase = 1;
+    try { save(); } catch (e) { /* niente */ }
+  }
+}
+// Rimette la lista di partenza. Chiede conferma perché butta via le voci
+// aggiunte a mano — ma NON tocca gli eventi già registrati in partita.
+function slRipristina(lista) {
+  const base = lista === 'giochiCustom' ? GIOCHI_STANDARD : DIFESE_STANDARD;
+  const nome = lista === 'giochiCustom' ? 'i giochi' : 'le difese';
+  if (!confirm('Rimettere ' + nome + ' della lista di partenza? Quello che hai aggiunto a mano qui verrà tolto.')) return;
+  DB.scoutingLive[lista] = base.slice();
+  save(); slRender();
+  toast('↺ Lista rimessa a posto');
 }
 function slCaricaRoster() {
   const g = DB.scoutingLive.giocatrici;
@@ -1780,6 +1937,27 @@ let lavEditIdx = null;
 // Il riconoscimento automatico e' acceso di default: si disegna e basta, il
 // segno diventa da solo il simbolo giusto. Il tasto serve solo a spegnerlo
 // quando si vuole scarabocchiare libero senza che l'app interpreti niente.
+// Tastierina dei numeri: scegli 1-5 e tocchi il campo. Niente scrittura a
+// mano da indovinare, il numero esce sempre giusto. Toccando di nuovo lo
+// stesso numero si spegne e si torna alla numerazione automatica.
+function lavNumero(n) {
+  deAutoFlushSubito();
+  deState.numeroForzato = (deState.numeroForzato === n) ? null : n;
+  deSetTool('off');
+  lavAggiornaNumpad();
+  toast(deState.numeroForzato ? ('Tocca il campo per mettere la ' + n) : 'Numero libero');
+}
+function lavAggiornaNumpad() {
+  document.querySelectorAll('.de-tool-btn[data-num]').forEach(b =>
+    b.classList.toggle('active', parseInt(b.getAttribute('data-num'), 10) === deState.numeroForzato));
+}
+// Scegliendo un altro strumento il numero fissato si libera da solo
+const __deSetToolBase = deSetTool;
+deSetTool = function (tool) {
+  if (tool !== 'off' && deState) deState.numeroForzato = null;
+  __deSetToolBase(tool);
+  lavAggiornaNumpad();
+};
 function lavToggleAuto() {
   deAutoFlushSubito();
   deAutoOn = !deAutoOn;
@@ -1873,6 +2051,7 @@ function lavNuovo(edit) {
   lavEditIdx = (edit != null) ? edit : null;
   deInit((e && e.campoMode) || 'half', 'lavagna', { big: true, theme: 'dark' });
   deState.tool = 'penna';
+  deState.numeroForzato = null;
   deAutoAnnulla();
   deAutoOn = true;
   // il motore avvisa qui cosa ha riconosciuto, cosi' si impara a fidarsi
@@ -1936,8 +2115,8 @@ function lavSalva() {
 
 /* ========================== SCOUTING LIVE ========================== */
 const SL_W = 760, SL_H = 543;
-const SL_CAT = ['Attacco', 'Contropiede', 'Rimessa laterale', 'Rimessa fondo', 'Secondo tiro'];
-let slPend = null, slPendPP = null, slPendTL = null, slLastTap = 0, slTapTimer = null, slXY = { x: .5, y: .5 };
+let slLastTap = 0, slTapTimer = null, slXY = { x: .5, y: .5 };
+let slUltimoId = null;   // ultimo evento registrato: e' a lui che si attaccano i tag
 
 // Stessa geometria di ITALBASKET WOMAN: garantisce che un tiro registrato qui
 // valga 2 o 3 punti esattamente come varrebbe là.
@@ -1961,10 +2140,12 @@ function slDrawCourt() {
     if (seg) { ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.stroke(); }
     else { ctx.moveTo(x - 8, y - 8); ctx.lineTo(x + 8, y + 8); ctx.moveTo(x + 8, y - 8); ctx.lineTo(x - 8, y + 8); ctx.stroke(); }
   });
-  if (slPend) {
-    const x = slPend.xPct * SL_W, y = slPend.yPct * SL_H;
+  // alone giallo sull'ultimo evento: e' quello a cui i tag si attaccano
+  const _u = slUltimoEvento();
+  if (_u && _u.xPct != null) {
+    const x = _u.xPct * SL_W, y = _u.yPct * SL_H;
     ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2.5; ctx.setLineDash([5, 4]);
-    ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
   }
 }
 function slCourtTap(evt) {
@@ -1976,59 +2157,160 @@ function slCourtTap(evt) {
   if (slLastTap && now - slLastTap < 350) { clearTimeout(slTapTimer); slLastTap = 0; slAvvia('segnato'); }
   else { slLastTap = now; slTapTimer = setTimeout(() => { slLastTap = 0; slAvvia('sbagliato'); }, 350); }
 }
+/* Il tiro si registra SUBITO al tocco sul campo: niente pannello da
+   confermare. Dopo, se vuoi, tocchi il gioco e/o la giocatrice e il tag si
+   attacca all'ultimo tiro. È il giro più corto possibile: campo -> tag. */
 function slAvvia(esito) {
-  slPend = { esito, difesa: null, giocatrice: null, gioco: null, xPct: slXY.x, yPct: slXY.y, punti: slShotValue(slXY.x, slXY.y) };
-  slPendPP = slPendTL = null; slRender();
+  const punti = slShotValue(slXY.x, slXY.y);
+  const ev = { tipo: 'tiro', esito, categoria: 'Attacco', difesa: null, giocatrice: null,
+               gioco: null, xPct: slXY.x, yPct: slXY.y, punti };
+  slPushEvento(ev);
+  slUltimoId = ev.id;
+  save(); slRender();
+  toast(esito === 'segnato' ? ('✔︎ Canestro da ' + punti) : '✖︎ Tiro sbagliato');
 }
-function slAvviaPP() { slPendPP = { giocatrice: null, gioco: null }; slPend = slPendTL = null; slRender(); }
-function slAvviaTL(esito) { slPendTL = { esito, giocatrice: null }; slPend = slPendPP = null; slRender(); }
-function slAnnulla() { slPend = slPendPP = slPendTL = null; slRender(); }
+function slAvviaPP() {
+  const ev = { tipo: 'pp', giocatrice: null, gioco: null };
+  slPushEvento(ev); slUltimoId = ev.id; slRender(); toast('🔄 Palla persa — tagga gioco o giocatrice');
+}
+function slAvviaTL(esito) {
+  const ev = { tipo: 'tiro', esito, categoria: 'TL', difesa: null, giocatrice: null, punti: 1 };
+  slPushEvento(ev); slUltimoId = ev.id;
+  save(); slRender(); toast(esito === 'segnato' ? '🎯 Libero segnato' : '✖︎ Libero sbagliato');
+}
+function slUltimoEvento() {
+  const ev = DB.scoutingLive.eventi;
+  for (let i = ev.length - 1; i >= 0; i--) if (ev[i].id === slUltimoId) return ev[i];
+  return null;
+}
 function slPushEvento(ev) {
   const sl = DB.scoutingLive;
   ev.id = uid('sl'); ev.partita = sl.partitaCorrente || ''; ev.quarto = sl.quartoCorrente || '1'; ev.ts = Date.now();
   sl.eventi.push(ev); save();
 }
-function slCommitTiro(categoria) {
-  if (!slPend) return;
-  slPushEvento({ tipo: 'tiro', esito: slPend.esito, categoria, difesa: slPend.difesa,
-                 giocatrice: slPend.giocatrice, gioco: slPend.gioco,
-                 xPct: slPend.xPct, yPct: slPend.yPct, punti: slPend.punti });
-  if (slPend.esito === 'segnato') DB.scoutingLive.punteggio.noi += slPend.punti;
-  slPend = null; save(); slRender(); toast('✔︎ Registrato');
-}
-function slCommitPP() {
-  if (!slPendPP) return;
-  slPushEvento({ tipo: 'pp', giocatrice: slPendPP.giocatrice, gioco: slPendPP.gioco });
-  slPendPP = null; slRender(); toast('✔︎ Palla persa');
-}
-function slCommitTL() {
-  if (!slPendTL) return;
-  slPushEvento({ tipo: 'tiro', esito: slPendTL.esito, categoria: 'TL', difesa: null,
-                 giocatrice: slPendTL.giocatrice, punti: 1 });
-  if (slPendTL.esito === 'segnato') DB.scoutingLive.punteggio.noi += 1;
-  slPendTL = null; save(); slRender(); toast('✔︎ Tiro libero');
-}
 function slUndo() {
   const sl = DB.scoutingLive;
   if (!sl.eventi.length) { toast('Niente da annullare', true); return; }
   const e = sl.eventi.pop();
-  if (e.tipo === 'tiro' && e.esito === 'segnato') sl.punteggio.noi = Math.max(0, sl.punteggio.noi - (e.punti || 0));
+  if (slUltimoId === e.id) slUltimoId = null;
   save(); slRender(); toast('↩︎ Annullato');
 }
-function slTagGioc(n) {
-  const t = slPend || slPendPP || slPendTL; if (!t) return;
-  t.giocatrice = t.giocatrice === n ? null : n; slRender();
+// I tag si attaccano all'ULTIMO evento registrato. Ritoccando lo stesso tag
+// lo si toglie, così una svista si corregge senza cancellare il tiro.
+function slAttacca(campo, n) {
+  const e = slUltimoEvento();
+  if (!e) { toast('Prima segna il tiro sul campo', true); return; }
+  e[campo] = (e[campo] === n) ? null : n;
+  save(); slRender();
+  toast(e[campo] ? ('🏷 ' + n) : 'Tag tolto');
 }
-function slTagDif(n) { if (!slPend) return; slPend.difesa = slPend.difesa === n ? null : n; slRender(); }
-function slTagGioco(n) {
-  // il gioco vale sia per una palla persa sia per un tiro: sapere da quale
-  // schema nasce la conclusione è metà del valore dello scouting dal vivo
-  const t = slPendPP || slPend; if (!t) return;
-  t.gioco = t.gioco === n ? null : n; slRender();
+function slTagGioc(n) { slAttacca('giocatrice', n); }
+function slTagGioco(n) { slAttacca('gioco', n); }
+
+/* DIFESA — si contano le difese subite, senza passare dal campo:
+     1 tocco  = loro sbagliano
+     2 tocchi = canestro subito
+     3 tocchi = fallo nostro
+   I tocchi si contano dentro una finestra di mezzo secondo. */
+const SL_DIF_ATTESA = 480;
+const slDifTap = {};
+function slTagDif(n) {
+  if (!slDifTap[n]) slDifTap[n] = { c: 0, t: null };
+  const s = slDifTap[n];
+  s.c++;
+  if (s.t) clearTimeout(s.t);
+  s.t = setTimeout(function () { const c = s.c; s.c = 0; s.t = null; slDifesaEvento(n, c); }, SL_DIF_ATTESA);
 }
-function slSetPartita(v) { DB.scoutingLive.partitaCorrente = v; save(); }
+function slDifesaEvento(n, tocchi) {
+  const sl = DB.scoutingLive;
+  if (tocchi === 1) {
+    slPushEvento({ tipo: 'dif', difesa: n, esito: 'sbagliato', punti: 0 });
+    toast('🛡 ' + n + ' — loro sbagliano');
+  } else if (tocchi === 2) {
+    slPushEvento({ tipo: 'dif', difesa: n, esito: 'canestro', punti: 2 });
+    toast('🛡 ' + n + ' — canestro subito');
+  } else {
+    slPushEvento({ tipo: 'dif', difesa: n, esito: 'fallo', punti: 0 });
+    toast('🛡 ' + n + ' — fallo nostro');
+  }
+  save(); slRender();
+}
+function slStatsDifesa(n) {
+  let sb = 0, can = 0, fa = 0;
+  slEventiPartita().forEach(e => {
+    if (e.tipo !== 'dif' || e.difesa !== n) return;
+    if (e.esito === 'sbagliato') sb++;
+    else if (e.esito === 'canestro') can++;
+    else fa++;
+  });
+  return { sb, can, fa, pt: can * 2, tot: sb + can };
+}
+/* PARTITE. Ogni evento porta con se' il nome della partita in cui e' stato
+   registrato, quindi cambiare partita non cancella niente: si torna indietro
+   quando si vuole e le statistiche si ricalcolano da sole. Il punteggio non
+   viene piu' tenuto come contatore globale (che si trascinava da una partita
+   all'altra) ma ricavato dagli eventi di QUESTA partita, piu' un aggiustamento
+   manuale per i punti che non si taggano (liberi degli altri, canestri persi
+   mentre si guarda altrove...). */
+function slSetPartita(v) { DB.scoutingLive.partitaCorrente = v; save(); slRender(); }
+function slManuale() {
+  const sl = DB.scoutingLive;
+  if (!sl.punteggioManuale) sl.punteggioManuale = {};
+  const k = sl.partitaCorrente || '';
+  if (!sl.punteggioManuale[k]) sl.punteggioManuale[k] = { noi: 0, avversari: 0 };
+  return sl.punteggioManuale[k];
+}
+function slPunteggio() {
+  const m = slManuale();
+  let noi = m.noi || 0, avv = m.avversari || 0;
+  slEventiPartita().forEach(e => {
+    if (e.tipo === 'tiro' && e.esito === 'segnato') noi += (e.punti || 2);
+    else if (e.tipo === 'dif' && e.esito === 'canestro') avv += (e.punti || 2);
+  });
+  return { noi: Math.max(0, noi), avversari: Math.max(0, avv) };
+}
+function slPartite() {
+  const sl = DB.scoutingLive, out = [];
+  sl.eventi.forEach(e => { const n = e.partita || ''; if (out.indexOf(n) < 0) out.push(n); });
+  const cur = sl.partitaCorrente || '';
+  if (out.indexOf(cur) < 0) out.unshift(cur);
+  return out;
+}
+function slNuovaPartita() {
+  const oggi = new Date().toISOString().slice(0, 10);
+  const n = prompt('Nome della nuova partita (es. «Italia - Belgio»):', 'Italia - ');
+  if (n === null) return;
+  const nome = (n || '').trim() || ('Partita ' + oggi);
+  const sl = DB.scoutingLive;
+  if (slPartite().indexOf(nome) >= 0 && !confirm('Esiste gia\' una partita con questo nome: vuoi riaprirla e continuare a taggarci sopra?')) return;
+  sl.partitaCorrente = nome;
+  sl.quartoCorrente = '1';
+  slUltimoId = null;
+  if (!sl.punteggioManuale) sl.punteggioManuale = {};
+  if (!sl.punteggioManuale[nome]) sl.punteggioManuale[nome] = { noi: 0, avversari: 0 };
+  save(); slRender();
+  toast('🆕 ' + nome + ' — 0:0, primo quarto');
+}
+function slCambiaPartita(v) {
+  DB.scoutingLive.partitaCorrente = v;
+  slUltimoId = null;
+  save(); slRender();
+  toast('📂 ' + (v || 'Partita senza nome'));
+}
+function slRinominaPartita() {
+  const sl = DB.scoutingLive, vecchio = sl.partitaCorrente || '';
+  const n = prompt('Nuovo nome della partita:', vecchio);
+  if (n === null) return;
+  const nome = (n || '').trim(); if (!nome || nome === vecchio) return;
+  sl.eventi.forEach(e => { if ((e.partita || '') === vecchio) e.partita = nome; });
+  if (sl.punteggioManuale && sl.punteggioManuale[vecchio]) {
+    sl.punteggioManuale[nome] = sl.punteggioManuale[vecchio];
+    delete sl.punteggioManuale[vecchio];
+  }
+  sl.partitaCorrente = nome; save(); slRender(); toast('✏️ Rinominata');
+}
 function slSetQuarto(q) { DB.scoutingLive.quartoCorrente = q; save(); slRender(); }
-function slPunti(chi, d) { const p = DB.scoutingLive.punteggio; p[chi] = Math.max(0, (p[chi] || 0) + d); save(); slRender(); }
+function slPunti(chi, d) { const m = slManuale(); m[chi] = (m[chi] || 0) + d; save(); slRender(); }
 function slEventiPartita() { const sl = DB.scoutingLive; return sl.eventi.filter(e => (e.partita || '') === (sl.partitaCorrente || '')); }
 function slAddGiocatrice() {
   const n = prompt('Nome (puoi mettere anche il numero, es. «13 Cubaj»):');
@@ -2060,47 +2342,59 @@ function slTagStatsHTML(campo, n) {
   return '<span class="st">' + st.s + '/' + st.t
     + (st.pt ? ' · ' + st.pt + 'pt' : '')
     + (st.pp ? ' · ' + st.pp + 'pp' : '')
-    + ' · ' + st.ppp.toFixed(2) + '</span>';
+    + ' · ' + st.ppp.toFixed(2) + 'ppp</span>';
 }
 function slStatsGioc(n) {
   let t = 0, s = 0, pp = 0;
   slEventiPartita().forEach(e => { if (e.giocatrice !== n) return; if (e.tipo === 'tiro') { t++; if (e.esito === 'segnato') s++; } else if (e.tipo === 'pp') pp++; });
   return { t, s, pp };
 }
+/* Una cella dell'incrocio giocatrice x gioco. Oltre a segnati/tentati mostra
+   la percentuale e i punti per tiro (PPT): e' quello che dice davvero se
+   QUELLA giocatrice e' efficace DENTRO quel gioco, non solo se ci tira.
+   Il colore e' una soglia da panchina: >=1.10 PPT verde (insisti),
+   <=0.75 rosso (non sta pagando), in mezzo neutro. */
+function slCella(c, forte) {
+  if (!c || !c.t) return '<td class="vuota">·</td>';
+  const ppt = c.pt / c.t;
+  const cls = ppt >= 1.10 ? ' buona' : (ppt <= 0.75 ? ' scarsa' : '');
+  const pct = Math.round(100 * c.s / c.t);
+  return '<td class="cella' + cls + '">' + (forte ? '<b>' : '') + c.s + '/' + c.t + (forte ? '</b>' : '')
+    + ' <span class="pc">' + pct + '%</span>'
+    + '<span class="pp">' + c.pt + 'pt · ' + ppt.toFixed(2) + ' ppt</span></td>';
+}
 function slRender() {
   const sl = DB.scoutingLive;
-  document.getElementById('slPartita').value = sl.partitaCorrente || '';
-  document.getElementById('slScore').textContent = (sl.punteggio.noi || 0) + ' : ' + (sl.punteggio.avversari || 0);
+  const pt = slPunteggio();
+  document.getElementById('slScore').textContent = pt.noi + ' : ' + pt.avversari;
+  const partite = slPartite();
+  document.getElementById('slPartita').innerHTML = partite.map(n =>
+    `<option value="${esc(n)}"${n === (sl.partitaCorrente || '') ? ' selected' : ''}>${esc(n) || '— senza nome —'}</option>`).join('');
   document.getElementById('slQuarti').innerHTML = ['1', '2', '3', '4', 'S'].map(q =>
     `<button class="chip${sl.quartoCorrente === q ? ' on' : ''}" onclick="slSetQuarto('${q}')">${q}</button>`).join('');
-  const gio = sl.giocatrici, tgt = slPend || slPendPP || slPendTL;
+  const gio = sl.giocatrici, tgt = slUltimoEvento();
   document.getElementById('slGiocatrici').innerHTML = gio.length ? gio.map(n => {
     const st = slStatsGioc(n);
     return `<button class="chip pl${fuoriRaduno(n) ? ' fuori' : ''}${tgt && tgt.giocatrice === n ? ' on' : ''}" onclick="slTagGioc('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giocatrici','${esc(n).replace(/'/g, "\\'")}')">${fuoriRaduno(n) ? '<span class="xr">✕</span>' : ''}${esc(n)}<span class="muted" style="margin-left:6px">${st.s}/${st.t}${st.pp ? ' · ' + st.pp + 'pp' : ''}</span></button>`;
   }).join('') : '<span class="muted">Nessuna giocatrice: tocca «＋ aggiungi». Doppio tocco su una per toglierla.</span>';
-  document.getElementById('slDifese').innerHTML = sl.difeseCustom.length ? sl.difeseCustom.map(n =>
-    `<button class="chip${slPend && slPend.difesa === n ? ' on' : ''}" onclick="slTagDif('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('difeseCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}${slTagStatsHTML('difesa', n)}</button>`).join('') : '<span class="muted">Nessuna difesa inserita.</span>';
-  const gsel = (slPendPP || slPend || {}).gioco;
+  document.getElementById('slDifese').innerHTML = sl.difeseCustom.length ? sl.difeseCustom.map(n => {
+    const d = slStatsDifesa(n);
+    const st = d.tot || d.fa ? `<span class="st">${d.sb}/${d.tot} · ${d.pt}pt · ${d.fa}f</span>` : '';
+    return `<button class="chip" onclick="slTagDif('${esc(n).replace(/'/g, "\\'")}')" oncontextmenu="event.preventDefault();slRemove('difeseCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}${st}</button>`;
+  }).join('') : '<span class="muted">Nessuna difesa inserita.</span>';
+  const ultimo = slUltimoEvento();
+  const gsel = ultimo ? ultimo.gioco : null;
   document.getElementById('slGiochi').innerHTML = sl.giochiCustom.length ? sl.giochiCustom.map(n =>
     `<button class="chip${gsel === n ? ' on' : ''}" onclick="slTagGioco('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giochiCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}${slTagStatsHTML('gioco', n)}</button>`).join('') : '<span class="muted">Nessun gioco. Tocca ＋ per aggiungere i tuoi schemi.</span>';
 
-  let ph = '';
-  if (slPend) {
-    ph = `<div class="pend"><div class="ttl" style="color:var(--txt)">Tiro da ${slPend.punti} — ${slPend.esito.toUpperCase()}</div>
-      <div class="muted" style="margin-bottom:8px">Tagga giocatrice e difesa qui sotto (facoltativo), poi scegli la situazione:</div>
-      <div class="row">${SL_CAT.map(c => `<button class="btn pri" onclick="slCommitTiro('${c}')">${c}</button>`).join('')}
-      <button class="btn sm" style="margin-left:auto" onclick="slAnnulla()">Annulla</button></div></div>`;
-  } else if (slPendPP) {
-    ph = `<div class="pend"><div class="ttl" style="color:var(--txt)">Palla persa</div>
-      <div class="muted" style="margin-bottom:8px">Tagga giocatrice e gioco (facoltativi), poi conferma.</div>
-      <div class="row"><button class="btn ok" onclick="slCommitPP()">✔︎ Conferma</button>
-      <button class="btn sm" onclick="slAnnulla()">Annulla</button></div></div>`;
-  } else if (slPendTL) {
-    ph = `<div class="pend"><div class="ttl" style="color:var(--txt)">Tiro libero — ${slPendTL.esito.toUpperCase()}</div>
-      <div class="row"><button class="btn ok" onclick="slCommitTL()">✔︎ Conferma</button>
-      <button class="btn sm" onclick="slAnnulla()">Annulla</button></div></div>`;
-  }
-  document.getElementById('slPending').innerHTML = ph;
+  // Riga di stato: dice a cosa si attaccano i tag adesso. Sostituisce il
+  // vecchio pannello di conferma, che era un passaggio in piu' per niente.
+  const u = slUltimoEvento();
+  document.getElementById('slPending').innerHTML = !u ? '' :
+    `<div class="pend"><b>Ultimo:</b> ${u.tipo === 'pp' ? 'palla persa'
+      : (u.categoria === 'TL' ? 'tiro libero ' : 'tiro da ' + (u.punti || 2) + ' ') + (u.esito === 'segnato' ? 'SEGNATO' : 'sbagliato')}
+      ${u.gioco ? ' · <b>' + esc(u.gioco) + '</b>' : ''}${u.giocatrice ? ' · ' + esc(u.giocatrice) : ''}
+      <span class="muted"> — tocca il <b>gioco</b> e la <b>giocatrice</b> (puoi metterli tutti e due; ritoccando togli il tag)</span></div>`;
 
   const ev = slEventiPartita();
   let t2 = 0, s2 = 0, t3 = 0, s3 = 0, tl = 0, stl = 0, pp = 0;
@@ -2113,6 +2407,41 @@ function slRender() {
   const pct = (a, b) => b ? (a / b * 100).toFixed(0) + '%' : '—';
   const byCat = {};
   ev.forEach(e => { if (e.tipo !== 'tiro' || e.categoria === 'TL') return; byCat[e.categoria] = byCat[e.categoria] || { t: 0, s: 0 }; byCat[e.categoria].t++; if (e.esito === 'segnato') byCat[e.categoria].s++; });
+  // Incrocio giocatrice x gioco: quanto segna ognuna DENTRO ogni schema. E'
+  // la lettura che serve in panchina per decidere su chi e su cosa insistere:
+  // non basta sapere che il #BASE gira, serve sapere per le mani di chi.
+  const inc = {}, giochiUsati = [];
+  ev.forEach(e => {
+    if (e.tipo !== 'tiro' || !e.gioco || !e.giocatrice) return;
+    if (!giochiUsati.includes(e.gioco)) giochiUsati.push(e.gioco);
+    const k = e.giocatrice + '\u0000' + e.gioco;
+    const c = inc[k] || (inc[k] = { t: 0, s: 0, pt: 0 });
+    c.t++; if (e.esito === 'segnato') { c.s++; c.pt += (e.punti || 2); }
+  });
+  const giocUsate = [];
+  ev.forEach(e => { if (e.tipo === 'tiro' && e.gioco && e.giocatrice && !giocUsate.includes(e.giocatrice)) giocUsate.push(e.giocatrice); });
+  let incHTML = '';
+  if (giocUsate.length && giochiUsati.length) {
+    const totGioco = {}, totGioc = {};
+    Object.keys(inc).forEach(k => {
+      const [gc, gi] = k.split('\u0000'), c = inc[k];
+      const a = totGioco[gi] || (totGioco[gi] = { t: 0, s: 0, pt: 0 });
+      a.t += c.t; a.s += c.s; a.pt += c.pt;
+      const bb = totGioc[gc] || (totGioc[gc] = { t: 0, s: 0, pt: 0 });
+      bb.t += c.t; bb.s += c.s; bb.pt += c.pt;
+    });
+    giochiUsati.sort((a, b) => totGioco[b].pt - totGioco[a].pt || totGioco[b].t - totGioco[a].t);
+    giocUsate.sort((a, b) => totGioc[b].pt - totGioc[a].pt || totGioc[b].t - totGioc[a].t);
+    incHTML = '<div class="ttl" style="margin-top:14px">Chi segna, e su quale gioco</div>'
+      + '<div style="overflow-x:auto"><table class="st inc"><tr><th>Giocatrice</th>'
+      + giochiUsati.map(g => '<th>' + esc(g) + '</th>').join('') + '<th>Totale</th></tr>'
+      + giocUsate.map(gc => '<tr><td style="font-weight:700">' + esc(gc) + '</td>'
+          + giochiUsati.map(gi => slCella(inc[gc + '\u0000' + gi])).join('')
+          + slCella(totGioc[gc], true) + '</tr>').join('')
+      + '<tr><td style="font-weight:700">Totale gioco</td>'
+      + giochiUsati.map(gi => slCella(totGioco[gi], true)).join('')
+      + '<td></td></tr></table></div>';
+  }
   document.getElementById('slStats').innerHTML = !ev.length ? '<p class="muted">Nessun evento ancora registrato per questa partita.</p>' :
     `<table class="st"><tr><th>Voce</th><th>Segnati</th><th>Tentati</th><th>%</th></tr>
      <tr><td>Da 2</td><td>${s2}</td><td>${t2}</td><td>${pct(s2, t2)}</td></tr>
@@ -2121,7 +2450,8 @@ function slRender() {
      <tr><td>Palle perse</td><td colspan="3">${pp}</td></tr></table>
      ${Object.keys(byCat).length ? `<div class="ttl" style="margin-top:12px">Per situazione</div><table class="st">
        <tr><th>Situazione</th><th>Segnati</th><th>Tentati</th><th>%</th></tr>
-       ${Object.entries(byCat).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.s}</td><td>${v.t}</td><td>${pct(v.s, v.t)}</td></tr>`).join('')}</table>` : ''}`;
+       ${Object.entries(byCat).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.s}</td><td>${v.t}</td><td>${pct(v.s, v.t)}</td></tr>`).join('')}</table>` : ''}
+     ${incHTML}`;
   slDrawCourt();
 }
 
@@ -2130,7 +2460,8 @@ function payloadLavagna() { return { lavagnaTattica: DB.lavagnaTattica, lavagnaT
 function payloadScouting() {
   const sl = DB.scoutingLive;
   return { eventi: sl.eventi, giochiCustom: sl.giochiCustom, difeseCustom: sl.difeseCustom,
-           giocatriciEscluse: [], partitaCorrente: sl.partitaCorrente, punteggio: sl.punteggio };
+           giocatriciEscluse: [], partitaCorrente: sl.partitaCorrente, punteggio: slPunteggio(),
+           punteggioManuale: sl.punteggioManuale || {} };
 }
 async function scarica(obj, nome) {
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
@@ -2191,7 +2522,7 @@ function fileImportChange(inp) {
 }
 function azzeraScouting() {
   if (!confirm('Cancellare TUTTI gli eventi di scouting? Esporta prima se ti servono.')) return;
-  DB.scoutingLive.eventi = []; DB.scoutingLive.punteggio = { noi: 0, avversari: 0 };
+  DB.scoutingLive.eventi = []; DB.scoutingLive.punteggio = { noi: 0, avversari: 0 }; DB.scoutingLive.punteggioManuale = {};
   save(); slRender(); datiRender(); toast('Azzerato');
 }
 function datiRender() {
