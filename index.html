@@ -16,8 +16,11 @@
 :root{--bg:#0b1220;--panel:#111c30;--panel2:#16243c;--line:#27364f;--txt:#e9eff8;--muted:#8fa3bf;
       --az:#2f7fd8;--ro:#e0344c;--ve:#2fa35c;--am:#e0a13a;
       /* larghezza del campo in unità di altezza schermo: si cambia da qui */
-      --campo:78}
-@media (orientation:portrait){:root{--campo:105}}
+      --campo:78;
+      /* la lavagna tattica puo' essere piu' grande del campo di scouting:
+         la si disegna, non la si tocca al volo durante la partita */
+      --campo-lav:96}
+@media (orientation:portrait){:root{--campo:105;--campo-lav:132}}
 html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--txt);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-text-size-adjust:100%}
@@ -47,14 +50,15 @@ input,select{height:38px}
 label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px}
 .muted{color:var(--muted);font-size:12px;line-height:1.5}
 /* --- lavagna --- */
-.de-tool-btn{padding:11px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);
-  color:var(--txt);font-size:14px;font-weight:700}
+.de-tool-btn{padding:9px 13px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--txt);font-size:13.5px;font-weight:700;white-space:nowrap}
 .de-tool-btn.active{background:var(--az);border-color:var(--az);color:#fff}
 .de-canvas-wrap{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#0a1830;
   /* Il campo è legato all'ALTEZZA dello schermo, non alla larghezza: così su
      iPad resta sempre visibile insieme alla barra degli strumenti, senza dover
-     scorrere. 78vh di larghezza = circa 56vh di altezza (proporzione 760x543). */
-  max-width:min(100%, calc(var(--campo) * 1vh));margin-left:auto;margin-right:auto}
+     scorrere. La lavagna usa --campo-lav (più grande del campo di scouting):
+     qui si disegna con calma, non si tagga al volo durante la partita. */
+  max-width:min(100%, calc(var(--campo-lav, var(--campo)) * 1vh));margin-left:auto;margin-right:auto}
 .de-canvas-wrap.de-frame-active{border-color:var(--az)}
 .de-canvas-wrap canvas{display:block;width:100%;height:auto;touch-action:none}
 .frametabs{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
@@ -72,6 +76,10 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px}
   color:var(--txt);font-size:12.5px;font-weight:600}
 .chip.on{background:var(--az);border-color:var(--az);color:#fff}
 .chip.pl{border-radius:9px}
+.chip .st{margin-left:7px;padding:1px 6px;border-radius:6px;background:rgba(255,255,255,.10);color:var(--mu);font-size:12px;font-weight:600;white-space:nowrap}
+.chip.on .st{background:rgba(255,255,255,.22);color:#fff}
+.chip.pl.fuori{opacity:.5;border-color:#e02424}
+.chip.pl.fuori .xr{color:#e02424;font-weight:900;margin-right:5px;opacity:1}
 .score{font-size:26px;font-weight:800;letter-spacing:1px}
 .pend{background:#1d2b45;border:1px solid var(--az);border-radius:12px;padding:12px;margin-bottom:12px}
 table.st{width:100%;border-collapse:collapse;font-size:12.5px}
@@ -83,10 +91,13 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
 
 /* --- scouting: attacco a sinistra, campo al centro, difesa a destra --- */
 #slGriglia{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}
-@media (min-width:900px){#slGriglia{grid-template-columns:190px minmax(0,1fr) 190px;align-items:start}}
+@media (min-width:900px){#slGriglia{grid-template-columns:215px minmax(0,1fr) 215px;align-items:start}}
 #slGriglia .col{margin-bottom:0}
 .colonna{display:flex;flex-direction:column;gap:6px;max-height:62vh;overflow-y:auto}
 .colonna .chip{width:100%;text-align:left}
+/* nelle colonne laterali le statistiche vanno a capo sotto al nome, se no
+   escono dalla casella e non si leggono */
+.colonna .chip .st{display:block;margin-left:0;margin-top:5px;width:fit-content}
 @media (max-width:899px){.colonna{flex-direction:row;flex-wrap:wrap}.colonna .chip{width:auto}}
 .fs{position:fixed !important;inset:0;z-index:900;background:var(--bg);padding:8px;overflow-y:auto}
 </style>
@@ -118,7 +129,10 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
       <button class="btn sm" onclick="lavChiudi()">← Archivio</button>
       <button class="de-tool-btn active" data-tool="penna" onclick="deSetTool('penna')">✏️ Penna</button>
       <button class="de-tool-btn" data-tool="gomma" onclick="deSetTool('gomma')">🧽 Gomma</button>
-      <button class="de-tool-btn" id="lavNumeriBtn" onclick="lavToggleNumeri()" title="Quando è acceso, un numero scritto a mano diventa un numero stampato">123</button>
+      <button class="de-tool-btn" data-tool="off" onclick="deSetTool('off')" title="Tocca sul campo per posizionare una giocatrice numerata: si può mettere anche fuori dalle linee, per chi batte la rimessa">⬤ Giocatrice</button>
+      <button class="de-tool-btn" data-tool="def" onclick="deSetTool('def')" title="Tocca sul campo per posizionare un difensore (X1, X2...)">⭘ Difensore</button>
+      <button class="de-tool-btn" data-tool="select" onclick="deSetTool('select')" title="Trascina per spostare quello che hai già messo">↖ Sposta</button>
+      <button class="de-tool-btn active" id="lavAutoBtn" onclick="lavToggleAuto()" title="Acceso: quello che disegni a mano libera diventa da solo il simbolo giusto — cerchio, numero 1-5, linea continua, tratteggiata (più trattini in fila), palleggio, blocco, tiro. Spento: la penna disegna e basta.">✨ Auto</button>
       <button class="btn sm" onclick="deUndo()">↩︎ Annulla</button>
       <button class="btn sm" onclick="deClear()">Pulisci fase</button>
       <button class="btn sm" onclick="lavToggleMode()" id="lavModeBtn">Mezzo campo</button>
@@ -241,7 +255,14 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
 let deState = null;
 
 function deCanvasSize(mode, big) {
-  const base = mode === 'full' ? { w: 576, h: 324 } : { w: 504, h: 360 };
+  // 'rimessa' = mezzo campo con spazio libero SU TUTTI E QUATTRO I LATI:
+  // 62px per lato, 62 sotto la linea di fondo (rimesse da fondo e laterali) e
+  // 62 sopra la meta' campo (chi arriva da dietro, transizione, rimesse a
+  // meta' campo). L'area di gioco resta la stessa 504x360 del mezzo campo
+  // normale, cosi' le proporzioni non cambiano.
+  const base = mode === 'full' ? { w: 576, h: 324 }
+             : mode === 'rimessa' ? { w: 628, h: 484 }
+             : { w: 504, h: 360 };
   if (!big) return base;
   // Campo "grande": stesso fattore di scala del campo di Scouting Live
   // (504x360 -> 760x543), usato dalla Lavagna Tattica per un campo più
@@ -287,6 +308,45 @@ function drawCourt(ctx, w, h, mode, theme) {
     });
     return;
   }
+  if (mode === 'rimessa') {
+    // Mezzo campo con attorno la fascia di fuoricampo: serve per disegnare le
+    // rimesse (fondo e laterale), dove chi rimette sta FUORI dalle linee.
+    // L'area di gioco ha esattamente le stesse proporzioni del mezzo campo
+    // normale, cosi' i disegni restano leggibili con lo stesso occhio.
+    const mx = Math.round(w * 0.0987);
+    const mt = Math.round(h * 0.1281);
+    const mb = Math.round(h * 0.1281);
+    const cw = w - mx * 2, ch = h - mt - mb;
+    ctx.save();
+    ctx.fillStyle = dark ? 'rgba(120,170,255,0.16)' : 'rgba(0,0,0,0.09)';
+    ctx.fillRect(4, 4, w - 8, h - 8);
+    ctx.fillStyle = dark ? '#0a1830' : '#ffffff';
+    ctx.fillRect(mx, mt, cw, ch);
+    ctx.restore();
+    // etichette discrete della zona fuori campo
+    ctx.save();
+    ctx.fillStyle = dark ? 'rgba(238,246,255,0.38)' : 'rgba(0,0,0,0.32)';
+    ctx.font = '600 ' + Math.round(h * 0.022) + 'px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('FUORI CAMPO', w - 12, h - 12);
+    ctx.textAlign = 'left';
+    ctx.fillText('OLTRE LA META\u0300 CAMPO', 12, Math.round(mt * 0.5));
+    ctx.restore();
+    ctx.save();
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(mx, mt, cw, ch);
+    ctx.translate(mx, mt);
+    deDrawHalfLines(ctx, cw, ch);
+    ctx.restore();
+    return;
+  }
+  deDrawHalfLines(ctx, w, h);
+}
+
+// Linee del mezzo campo, disegnate a partire da (0,0) con l'area di gioco
+// larga w e alta h: cosi' la stessa geometria vale sia per il mezzo campo che
+// riempie tutto il canvas, sia per quello rientrato dentro il fuoricampo.
+function deDrawHalfLines(ctx, w, h) {
   // Proporzioni reali FIBA (campo largo 15m -> scala px/m = w/15, usata anche
   // in verticale cosi' che accorciare il canvas non alteri le proporzioni):
   // area 4.9m, cerchio tiro libero raggio 1.8m, arco da 3 raggio 6.75m,
@@ -1174,6 +1234,374 @@ function deTryRecognizeDigit(points) {
   };
 }
 
+/* ==================== RICONOSCIMENTO AUTOMATICO DEL TRATTO ====================
+   Il coach disegna a mano libera e il segno diventa il simbolo giusto, senza
+   scegliere niente prima. Si guarda la forma DOPO che il tratto è finito.
+
+   Il tratteggio è l'unico caso che non si capisce da un tratto solo: si
+   disegna alzando e riappoggiando la penna, quindi arrivano PIÙ segni corti
+   in fila. Per questo, finito un tratto, si aspetta mezzo secondo: se ne
+   arrivano altri allineati, insieme fanno una linea tratteggiata.
+
+   Cosa riconosce:
+     cerchio                       -> giocatrice (o "ha la palla" se cerchi un numero)
+     cifra 1-5                     -> giocatrice numerata
+     tratto dritto e liscio        -> linea continua (taglio)
+     più tratti corti in fila      -> linea tratteggiata (passaggio)
+     sinusoide stretta             -> palleggio
+     dritto con barretta a T finale-> blocco
+     dritto che finisce sul ferro  -> tiro
+     lineetta corta + 2 barrette
+     perpendicolari ancora piu' corte -> passaggio consegnato
+   Se non riconosce niente, il tratto resta esattamente com'è stato disegnato:
+   non si perde mai un segno.
+*/
+let deAutoOn = false;
+let deAutoBuf = [];
+let deAutoTimer = null;
+let deAutoAvviso = null;              // callback facoltativa per il messaggino a video
+const DE_AUTO_ATTESA = 460;           // ms: quanto si aspetta un eventuale trattino successivo
+
+function deAutoAnnulla() {
+  if (deAutoTimer) clearTimeout(deAutoTimer);
+  deAutoTimer = null;
+  deAutoBuf = [];
+}
+
+/* ---------- misure di base ---------- */
+function deGeoLunghezza(pts) {
+  let l = 0;
+  for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  return l;
+}
+function deGeoBox(pts) {
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  return { x0, x1, y0, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2,
+           diag: Math.hypot(x1 - x0, y1 - y0) };
+}
+// Direzione principale della nuvola di punti (asse su cui sono più allungati)
+// e quanto se ne discostano: serve sia per il tratteggio sia per capire se un
+// tratto è "dritto" anche quando la mano trema.
+function deGeoAsse(pts) {
+  const n = pts.length;
+  let mx = 0, my = 0;
+  pts.forEach(p => { mx += p.x; my += p.y; });
+  mx /= n; my /= n;
+  let sxx = 0, syy = 0, sxy = 0;
+  pts.forEach(p => { const dx = p.x - mx, dy = p.y - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; });
+  const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+  const ux = Math.cos(theta), uy = Math.sin(theta);
+  let tMin = Infinity, tMax = -Infinity, devMax = 0;
+  pts.forEach(p => {
+    const dx = p.x - mx, dy = p.y - my;
+    const t = dx * ux + dy * uy;
+    const d = Math.abs(-dx * uy + dy * ux);
+    if (t < tMin) tMin = t; if (t > tMax) tMax = t;
+    if (d > devMax) devMax = d;
+  });
+  return { mx, my, ux, uy, span: tMax - tMin, devMax,
+           proj: p => (p.x - mx) * ux + (p.y - my) * uy,
+           perp: p => -(p.x - mx) * uy + (p.y - my) * ux };
+}
+// Quante volte il tratto passa da una parte all'altra della sua linea media:
+// una sinusoide (palleggio) ne fa tante, una linea nessuna.
+function deGeoInversioni(pts, asse) {
+  let segno = 0, cambi = 0, ampiezza = 0;
+  const soglia = Math.max(2.5, asse.span * 0.012);
+  pts.forEach(p => {
+    const d = asse.perp(p);
+    if (Math.abs(d) > ampiezza) ampiezza = Math.abs(d);
+    if (Math.abs(d) < soglia) return;
+    const s = d > 0 ? 1 : -1;
+    if (segno && s !== segno) cambi++;
+    segno = s;
+  });
+  return { cambi, ampiezza };
+}
+function deGeoAngolo(a, b) {           // angolo fra due vettori, in gradi
+  const na = Math.hypot(a.x, a.y) || 1, nb = Math.hypot(b.x, b.y) || 1;
+  const c = Math.max(-1, Math.min(1, (a.x * b.x + a.y * b.y) / (na * nb)));
+  return Math.acos(c) * 180 / Math.PI;
+}
+function deGeoDirezione(pts, da, a) {  // vettore medio fra due indici
+  return { x: pts[a].x - pts[da].x, y: pts[a].y - pts[da].y };
+}
+
+/* ---------- cifre: solo 1-5, così sbaglia molto meno ----------
+   Con dieci candidati il modello confondeva 1/7, 3/8, 5/6. Sul campo servono
+   solo i numeri da 1 a 5: si guarda quindi la probabilità SOLO fra quelli, e
+   si accetta se il primo stacca nettamente il secondo. */
+function deAutoCifra(pts) {
+  const box = deGeoBox(pts);
+  const big = Math.max(box.w, box.h);
+  if (big < 14 || big > 130) return null;
+  const vec = deRasterizeStrokeFor8x8(pts);
+  const m = DE_DIGIT_MODEL;
+  const hidden = new Array(m.b1.length);
+  for (let j = 0; j < m.b1.length; j++) {
+    let s = m.b1[j];
+    for (let i = 0; i < vec.length; i++) s += vec[i] * m.w1[i][j];
+    hidden[j] = Math.max(0, s);
+  }
+  const out = new Array(m.b2.length);
+  for (let j = 0; j < m.b2.length; j++) {
+    let s = m.b2[j];
+    for (let i = 0; i < hidden.length; i++) s += hidden[i] * m.w2[i][j];
+    out[j] = s;
+  }
+  // esponenziali normalizzate sui soli 1..5
+  const cand = [1, 2, 3, 4, 5];
+  const maxL = Math.max(...cand.map(d => out[d]));
+  const exps = cand.map(d => Math.exp(out[d] - maxL));
+  const tot = exps.reduce((a, b) => a + b, 0);
+  const probs = exps.map(v => v / tot);
+  let i1 = 0;
+  for (let i = 1; i < probs.length; i++) if (probs[i] > probs[i1]) i1 = i;
+  const p1 = probs[i1];
+  const p2 = Math.max(...probs.filter((_, i) => i !== i1));
+  if (p1 < 0.40 || p1 < p2 * 1.45) return null;
+  return { cifra: cand[i1], cx: box.cx, cy: box.cy };
+}
+
+/* ---------- aiuti sul campo ---------- */
+function deAutoCanestro() {
+  const s = deCanvasSize(deState.mode, deState.big);
+  if (deState.mode === 'full') return null;         // due canestri: non si indovina
+  if (deState.mode === 'rimessa') {
+    const mx = Math.round(s.w * 0.0987), mt = Math.round(s.h * 0.1281), mb = Math.round(s.h * 0.1281);
+    const cw = s.w - mx * 2, ch = s.h - mt - mb;
+    return { x: mx + cw / 2, y: mt + ch - 5 - (cw / 15) * 1.575 };
+  }
+  return { x: s.w / 2, y: s.h - 5 - (s.w / 15) * 1.575 };
+}
+function deAutoGiocatriceVicina(x, y, raggio) {
+  const els = deCur().elements;
+  let best = -1, bestD = raggio;
+  for (let i = 0; i < els.length; i++) {
+    const e = els[i];
+    if (e.type !== 'player') continue;
+    const d = Math.hypot(e.x - x, e.y - y);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return best;
+}
+function deAutoProssimoNumero() {
+  const usati = new Set(deCur().elements.filter(e => e.type === 'player' && e.team === 'off').map(e => String(e.label)));
+  for (let n = 1; n <= 5; n++) if (!usati.has(String(n))) return String(n);
+  return String(usati.size + 1);
+}
+
+/* ---------- classificazione ---------- */
+// Passaggio consegnato: si disegna come lo si disegna sulla lavagna vera --
+// una lineetta continua corta e SOPRA due barrette perpendicolari, ancora piu'
+// corte. Sono tre tratti staccati, quindi si riconosce sul gruppo, non sul
+// singolo segno. Va provato PRIMA del tratteggio: li' i trattini sono tutti
+// paralleli e in fila, qui invece due sono di traverso.
+function deAutoConsegnato(strokes) {
+  if (strokes.length !== 3) return null;
+  const info = strokes.map(s => {
+    const b = deGeoBox(s);
+    const d = { x: s[s.length - 1].x - s[0].x, y: s[s.length - 1].y - s[0].y };
+    return { b, d, len: Math.hypot(d.x, d.y), dritto: deStrokeStraightnessRatio(s) };
+  });
+  if (info.some(i => i.dritto < 0.84)) return null;      // tutti e tre dritti
+  if (info.some(i => i.len > 120)) return null;          // tutti e tre corti
+  const ord = info.slice().sort((a, b) => b.len - a.len);
+  const corpo = ord[0], barre = ord.slice(1);
+  if (corpo.len < 14) return null;
+  for (const t of barre) {
+    if (t.len > corpo.len * 0.92) return null;           // le barrette sono piu' brevi
+    const ang = deGeoAngolo(corpo.d, t.d);
+    if (Math.min(ang, 180 - ang) < 52) return null;      // e di traverso
+    if (Math.hypot(t.b.cx - corpo.b.cx, t.b.cy - corpo.b.cy) > corpo.len * 0.95) return null;  // addosso
+  }
+  return { tipo: 'passaggio consegnato', elementi: [{ type: 'handoff', x: corpo.b.cx, y: corpo.b.cy }] };
+}
+
+// Più tratti corti, allineati e in fila = linea tratteggiata.
+function deAutoTratteggio(strokes) {
+  if (strokes.length < 3) return null;
+  const tutti = [].concat.apply([], strokes);
+  const asse = deGeoAsse(tutti);
+  if (asse.span < 70) return null;
+  if (asse.devMax > asse.span * 0.14) return null;           // devono stare su una riga
+  // ogni trattino corto e dritto
+  for (const s of strokes) {
+    const l = deGeoLunghezza(s);
+    if (l > asse.span * 0.55) return null;
+    if (deStrokeStraightnessRatio(s) < 0.80) return null;
+  }
+  // e disposti in ordine lungo la riga, senza tornare indietro
+  const centri = strokes.map(s => {
+    const b = deGeoBox(s);
+    return asse.proj({ x: b.cx, y: b.cy });
+  });
+  let avanti = true, indietro = true;
+  for (let i = 1; i < centri.length; i++) {
+    if (centri[i] <= centri[i - 1]) avanti = false;
+    if (centri[i] >= centri[i - 1]) indietro = false;
+  }
+  if (!avanti && !indietro) return null;
+  const primo = strokes[0][0];
+  const ultimo = strokes[strokes.length - 1][strokes[strokes.length - 1].length - 1];
+  return { tipo: 'passaggio', elementi: [{ type: 'path', kind: 'passaggio', points: [primo, ultimo] }] };
+}
+
+function deAutoSingolo(pts) {
+  if (pts.length < 3) return null;
+  const box = deGeoBox(pts);
+  const lung = deGeoLunghezza(pts);
+  const chiusura = Math.hypot(pts[pts.length - 1].x - pts[0].x, pts[pts.length - 1].y - pts[0].y);
+  const asse = deGeoAsse(pts);
+  const inv = deGeoInversioni(pts, asse);
+
+  // --- cerchio: parte e finisce nello stesso punto, e sta a raggio costante
+  if (lung > 55 && chiusura < lung * 0.28 && box.w > 16 && box.h > 16) {
+    const r = pts.reduce((a, p) => a + Math.hypot(p.x - box.cx, p.y - box.cy), 0) / pts.length;
+    const varianza = pts.reduce((a, p) => a + Math.abs(Math.hypot(p.x - box.cx, p.y - box.cy) - r), 0) / pts.length;
+    if (r > 8 && varianza < r * 0.34) {
+      const idx = deAutoGiocatriceVicina(box.cx, box.cy, Math.max(38, r * 1.3));
+      if (idx >= 0) {
+        deCur().elements.forEach(e => { if (e.type === 'player' && e.team === 'off') e.hasBall = false; });
+        deCur().elements[idx].hasBall = true;
+        return { tipo: 'palla in mano a ' + (deCur().elements[idx].label || ''), elementi: [] };
+      }
+      return { tipo: 'giocatrice', elementi: [{ type: 'player', team: 'off', x: box.cx, y: box.cy,
+                                               label: deAutoProssimoNumero(), hasBall: false }] };
+    }
+  }
+
+  // --- palleggio: tante andate e ritorni stretti attorno alla linea media
+  if (inv.cambi >= 4 && asse.span > 55 && inv.ampiezza < asse.span * 0.30) {
+    const a = pts[0], b = pts[pts.length - 1];
+    return { tipo: 'palleggio', elementi: [{ type: 'path', kind: 'palleggio', points: [a, b] }] };
+  }
+
+  // --- cifra 1-5: si prova PRIMA delle linee, perche' un "1" scritto a mano
+  // e' anche un tratto dritto verticale. Vale solo sui segni piccoli: una
+  // linea tattica e' quasi sempre piu' lunga di cosi'. Un trattino corto ma
+  // ORIZZONTALE resta una linea, non e' una cifra.
+  if (box.diag < 96) {
+    const fin = pts[pts.length - 1];
+    const orizzontale = Math.abs(fin.x - pts[0].x) > Math.abs(fin.y - pts[0].y) * 1.2;
+    if (!(orizzontale && deStrokeStraightnessRatio(pts) > 0.90)) {
+      const c0 = deAutoCifra(pts);
+      if (c0) {
+        const i0 = deAutoGiocatriceVicina(c0.cx, c0.cy, 42);
+        if (i0 >= 0) {
+          deCur().elements[i0].label = String(c0.cifra);
+          return { tipo: 'numero ' + c0.cifra, elementi: [] };
+        }
+        return { tipo: 'giocatrice ' + c0.cifra, elementi: [
+          { type: 'player', team: 'off', x: c0.cx, y: c0.cy, label: String(c0.cifra), hasBall: false }] };
+      }
+    }
+  }
+
+  // --- tratto dritto (con eventuale coda speciale in fondo)
+  // Vale come "dritto" anche quando la coda finale gira di netto (barretta a T
+  // del blocco, uncino del consegnato): in quel caso si misura la rettilineita'
+  // del solo corpo, se no la coda stessa farebbe scartare il tratto.
+  const nCoda = Math.max(2, Math.round(pts.length * 0.20));
+  const iCoda = Math.max(2, pts.length - nCoda);
+  const corpo = pts.slice(0, iCoda + 1);
+  const drittoTutto = deStrokeStraightnessRatio(pts) > 0.90;
+  const drittoCorpo = corpo.length >= 3 && deStrokeStraightnessRatio(corpo) > 0.93;
+  if (drittoTutto || drittoCorpo) {
+    const dirPrinc = deGeoDirezione(pts, 0, Math.max(1, iCoda));
+    const dirCoda = deGeoDirezione(pts, iCoda, pts.length - 1);
+    const lenCoda = Math.hypot(dirCoda.x, dirCoda.y);
+    const ang = deGeoAngolo(dirPrinc, dirCoda);
+    const fine = pts[iCoda];
+
+    // barretta a T in fondo = blocco
+    if (ang > 58 && ang < 122 && lenCoda > 12 && lenCoda < lung * 0.40) {
+      return { tipo: 'blocco', elementi: [{ type: 'path', kind: 'bloccolinea', points: [pts[0], fine] }] };
+    }
+    const a = pts[0], b = pts[pts.length - 1];
+    if (Math.hypot(b.x - a.x, b.y - a.y) < 26) return null;   // troppo corto: lascialo com'è
+    // finisce sul ferro = tiro
+    const cane = deAutoCanestro();
+    if (cane && Math.hypot(b.x - cane.x, b.y - cane.y) < 58 && lung > 70) {
+      return { tipo: 'tiro', elementi: [
+        { type: 'path', kind: 'taglio', points: [a, b] },
+        { type: 'shot', x: b.x, y: b.y }] };
+    }
+    return { tipo: 'linea continua', elementi: [{ type: 'path', kind: 'taglio', points: [a, b] }] };
+  }
+
+  // --- cifra 1-5 su tratti piccoli e compatti
+  if (box.diag < 110) {
+    const c = deAutoCifra(pts);
+    if (c) {
+      const idx = deAutoGiocatriceVicina(c.cx, c.cy, 42);
+      if (idx >= 0) {
+        deCur().elements[idx].label = String(c.cifra);
+        return { tipo: 'numero ' + c.cifra, elementi: [] };
+      }
+      return { tipo: 'giocatrice ' + c.cifra, elementi: [
+        { type: 'player', team: 'off', x: c.cx, y: c.cy, label: String(c.cifra), hasBall: false }] };
+    }
+  }
+  return null;
+}
+
+function deAutoClassifica(strokes) {
+  if (!strokes.length) return null;
+  if (strokes.length >= 2) {
+    const consegnato = deAutoConsegnato(strokes);
+    if (consegnato) return consegnato;
+    const tratteggio = deAutoTratteggio(strokes);
+    if (tratteggio) return tratteggio;
+    // cifre scritte in due tratti (il 4 e il 5 spesso lo sono)
+    const tutti = [].concat.apply([], strokes);
+    const box = deGeoBox(tutti);
+    if (box.diag < 110) {
+      const c = deAutoCifra(tutti);
+      if (c) {
+        const idx = deAutoGiocatriceVicina(c.cx, c.cy, 42);
+        if (idx >= 0) { deCur().elements[idx].label = String(c.cifra); return { tipo: 'numero ' + c.cifra, elementi: [] }; }
+        return { tipo: 'giocatrice ' + c.cifra, elementi: [
+          { type: 'player', team: 'off', x: c.cx, y: c.cy, label: String(c.cifra), hasBall: false }] };
+      }
+    }
+    return null;
+  }
+  return deAutoSingolo(strokes[0]);
+}
+
+/* ---------- il ciclo: accumula, aspetta, decide ---------- */
+function deAutoFlush() {
+  deAutoTimer = null;
+  const strokes = deAutoBuf; deAutoBuf = [];
+  if (!strokes.length) return;
+  const frame = deCur();
+  frame.elements = frame.elements.filter(e => !e._auto);      // via le anteprime grezze
+  const esito = deAutoClassifica(strokes);
+  if (esito) {
+    esito.elementi.forEach(e => frame.elements.push(e));
+    if (esito.elementi.some(e => e.type === 'player')) {
+      const n = parseInt(esito.elementi.find(e => e.type === 'player').label, 10);
+      if (n > 0) frame.offCount = Math.max(frame.offCount || 0, n);
+    }
+    if (deAutoAvviso) deAutoAvviso(esito.tipo);
+  } else {
+    strokes.forEach(p => frame.elements.push({ type: 'freehand', points: deSmoothPoints(deSimplifyPoints(p, 2.2), 2) }));
+  }
+  deRedraw();
+}
+function deAutoFlushSubito() {
+  if (deAutoTimer) { clearTimeout(deAutoTimer); deAutoFlush(); }
+}
+function deAutoAggiungi(points) {
+  deAutoBuf.push(points.slice());
+  deCur().elements.push({ type: 'freehand', points: points.slice(), _auto: true });
+  if (deAutoTimer) clearTimeout(deAutoTimer);
+  deAutoTimer = setTimeout(deAutoFlush, DE_AUTO_ATTESA);
+  deRedraw();
+}
+
 function deFinishFreehand() {
   // Gemella di deFinishPath ma senza il filtro "fondi punti a <8px": la
   // Penna libera vuole appositamente punti fitti per un tratto morbido, e
@@ -1181,6 +1609,16 @@ function deFinishFreehand() {
   // ridurrebbe un tratto disegnato a mano a pochi segmenti spigolosi.
   if (deState.pendingPath && deState.pendingPath.type === 'freehand') {
     if (deState.pendingPath.points.length >= 2) {
+      // Riconoscimento automatico acceso: il tratto non viene deciso subito.
+      // Va in un buffer e si aspetta mezzo secondo, perche' una linea
+      // tratteggiata arriva come piu' segni corti staccati e va letta tutta
+      // insieme (vedi deAutoAggiungi).
+      if (typeof deAutoOn !== 'undefined' && deAutoOn) {
+        const grezzi = deState.pendingPath.points.slice();
+        deState.pendingPath = null;
+        deAutoAggiungi(grezzi);
+        return;
+      }
       // Prima si prova a riconoscere una cifra scritta a mano (numero di
       // maglia) su tratti piccoli e compatti -- SUL TRATTO GREZZO, prima di
       // semplificarlo/ammorbidirlo come linea, perché la semplificazione è
@@ -1219,6 +1657,7 @@ function deSetTool(tool) {
 }
 
 function deUndo() {
+  if (typeof deAutoAnnulla === 'function') { deAutoFlushSubito(); }
   if (deState.pendingPath) { deState.pendingPath = null; deState.penDown = false; deState.activeTouchId = null; }
   else {
     const frame = deCur();
@@ -1269,6 +1708,12 @@ const LS_KEY = 'panchina_v1';
 const ROSTER_ITALIA = ['9 Zandalasini','13 Cubaj','0 Keys','8 Verona','23 Spreafico','6 Pasa',
   '11 Pan','14 Madera','18 Santucci','19 Fassina','22 Futo Andre','77 Kacerik','15 Blasigh',
   'Zanardi','Osazuwa','E. Villa','M. Villa','Gilli','Conte','Conti'];
+// Giocatrici uscite dal raduno: crocetta rossa sul chip.
+const FUORI_RADUNO = ['Osazuwa', 'Gilli', 'Conte', 'Conti', 'Leonardi', 'E. Villa'];
+function fuoriRaduno(n) {
+  const c = String(n || '').replace(/^\s*\d+\s+/, '').trim().toLowerCase();
+  return FUORI_RADUNO.some(x => x.toLowerCase() === c);
+}
 const DIFESE_STANDARD = ['Uomo','Zona 2-3','Zona 3-2','Zona 1-3-1','Match-up','Press tutto campo','Raddoppio'];
 let DB = { lavagnaTattica: [], lavagnaTatticaSezioni: ['Generale'],
            scoutingLive: { eventi: [], giochiCustom: [], difeseCustom: [], giocatrici: [],
@@ -1332,17 +1777,15 @@ let lavEditIdx = null;
    disegna un taglio o un blocco. Qui la funzione viene avvolta in modo che
    entri in gioco solo con il pulsante «123» acceso, e il resto del tempo la
    penna disegni e basta, senza mai reinterpretare nulla. */
-let modoNumeri = false;
-const __riconosciCifraMotore = deTryRecognizeDigit;
-deTryRecognizeDigit = function (points) {
-  if (!modoNumeri) return null;
-  return __riconosciCifraMotore(points);
-};
-function lavToggleNumeri() {
-  modoNumeri = !modoNumeri;
-  const b = document.getElementById('lavNumeriBtn');
-  if (b) b.classList.toggle('active', modoNumeri);
-  toast(modoNumeri ? '123 — ora scrivi il numero' : 'Penna normale');
+// Il riconoscimento automatico e' acceso di default: si disegna e basta, il
+// segno diventa da solo il simbolo giusto. Il tasto serve solo a spegnerlo
+// quando si vuole scarabocchiare libero senza che l'app interpreti niente.
+function lavToggleAuto() {
+  deAutoFlushSubito();
+  deAutoOn = !deAutoOn;
+  const b = document.getElementById('lavAutoBtn');
+  if (b) b.classList.toggle('active', deAutoOn);
+  toast(deAutoOn ? '✨ Riconoscimento acceso' : '✏️ Penna libera, nessun riconoscimento');
 }
 
 function lavRender() {
@@ -1404,11 +1847,19 @@ function lavFrameTabs() {
 }
 function lavSetFrame(i) {
   if (deState.pendingPath) { if (deState.pendingPath.type === 'freehand') deFinishFreehand(); else deFinishPath(); }
+  deAutoFlushSubito();
   deState.active = i; lavMountCanvas();
 }
+// Tre campi, si girano in tondo con lo stesso bottone:
+// mezzo campo -> tutto campo -> mezzo campo con il fuoricampo per le rimesse.
+const LAV_MODI = ['half', 'full', 'rimessa'];
+const LAV_ETICHETTE = { half: 'Mezzo campo', full: 'Tutto campo', rimessa: 'Rimesse' };
+function lavModeLabel() { return LAV_ETICHETTE[deState.mode] || 'Mezzo campo'; }
 function lavToggleMode() {
-  deState.mode = deState.mode === 'half' ? 'full' : 'half';
-  document.getElementById('lavModeBtn').textContent = deState.mode === 'half' ? 'Mezzo campo' : 'Tutto campo';
+  deAutoFlushSubito();
+  const i = LAV_MODI.indexOf(deState.mode);
+  deState.mode = LAV_MODI[(i + 1) % LAV_MODI.length];
+  document.getElementById('lavModeBtn').textContent = lavModeLabel();
   lavMountCanvas();
 }
 function lavToggleFs() {
@@ -1422,7 +1873,11 @@ function lavNuovo(edit) {
   lavEditIdx = (edit != null) ? edit : null;
   deInit((e && e.campoMode) || 'half', 'lavagna', { big: true, theme: 'dark' });
   deState.tool = 'penna';
-  modoNumeri = false;
+  deAutoAnnulla();
+  deAutoOn = true;
+  // il motore avvisa qui cosa ha riconosciuto, cosi' si impara a fidarsi
+  // (e se ha sbagliato basta «Annulla»)
+  deAutoAvviso = function (cosa) { toast('✨ ' + cosa); };
   if (e && Array.isArray(e.elementiFasi)) e.elementiFasi.forEach((els, i) => { if (deState.frames[i]) deState.frames[i].elements = JSON.parse(JSON.stringify(els)); });
   document.getElementById('lavArchivio').style.display = 'none';
   document.getElementById('lavEditor').style.display = 'block';
@@ -1431,7 +1886,7 @@ function lavNuovo(edit) {
   document.getElementById('lavData').value = (e && e.data) || new Date().toISOString().slice(0, 10);
   document.getElementById('lavSezione').innerHTML = lavSezioniOptions(e ? e.sezione : DB.lavagnaTatticaSezioni[0]);
   document.getElementById('lavNote').value = e ? (e.note || '') : '';
-  document.getElementById('lavModeBtn').textContent = deState.mode === 'half' ? 'Mezzo campo' : 'Tutto campo';
+  document.getElementById('lavModeBtn').textContent = lavModeLabel();
   document.querySelectorAll('.de-tool-btn[data-tool]').forEach(b => b.classList.toggle('active', b.getAttribute('data-tool') === 'penna'));
   lavMountCanvas();
 }
@@ -1451,6 +1906,7 @@ function lavSalva() {
   const nome = document.getElementById('lavNome').value.trim();
   if (!nome) { toast('Manca il nome', true); return; }
   if (deState.pendingPath) { if (deState.pendingPath.type === 'freehand') deFinishFreehand(); else deFinishPath(); }
+  deAutoFlushSubito();
   // Le fasi vengono rasterizzate una per una: deRenderFrameToDataURL legge il
   // canvas della fase attiva, quindi bisogna montarla davvero prima di
   // catturarla (non basta cambiare deState.active).
@@ -1585,6 +2041,27 @@ function slRemove(lista, n) {
   if (!confirm('Togliere «' + n + '»?')) return;
   const a = DB.scoutingLive[lista]; const i = a.indexOf(n); if (i >= 0) a.splice(i, 1); save(); slRender();
 }
+// Statistiche di un'etichetta (gioco o difesa) nella partita corrente:
+// quante volte l'abbiamo usata, quanto ci abbiamo segnato, e i punti per
+// possesso -- il numero che dice davvero se lo schema sta funzionando.
+function slStatsTag(campo, n) {
+  let t = 0, s = 0, pt = 0, pp = 0;
+  slEventiPartita().forEach(e => {
+    if (e[campo] !== n) return;
+    if (e.tipo === 'tiro') { t++; if (e.esito === 'segnato') { s++; pt += (e.punti || 2); } }
+    else if (e.tipo === 'pp') pp++;
+  });
+  const usi = t + pp;
+  return { t, s, pt, pp, usi, ppp: usi ? pt / usi : 0 };
+}
+function slTagStatsHTML(campo, n) {
+  const st = slStatsTag(campo, n);
+  if (!st.usi) return '';
+  return '<span class="st">' + st.s + '/' + st.t
+    + (st.pt ? ' · ' + st.pt + 'pt' : '')
+    + (st.pp ? ' · ' + st.pp + 'pp' : '')
+    + ' · ' + st.ppp.toFixed(2) + '</span>';
+}
 function slStatsGioc(n) {
   let t = 0, s = 0, pp = 0;
   slEventiPartita().forEach(e => { if (e.giocatrice !== n) return; if (e.tipo === 'tiro') { t++; if (e.esito === 'segnato') s++; } else if (e.tipo === 'pp') pp++; });
@@ -1599,13 +2076,13 @@ function slRender() {
   const gio = sl.giocatrici, tgt = slPend || slPendPP || slPendTL;
   document.getElementById('slGiocatrici').innerHTML = gio.length ? gio.map(n => {
     const st = slStatsGioc(n);
-    return `<button class="chip pl${tgt && tgt.giocatrice === n ? ' on' : ''}" onclick="slTagGioc('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giocatrici','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}<span class="muted" style="margin-left:6px">${st.s}/${st.t}${st.pp ? ' · ' + st.pp + 'pp' : ''}</span></button>`;
+    return `<button class="chip pl${fuoriRaduno(n) ? ' fuori' : ''}${tgt && tgt.giocatrice === n ? ' on' : ''}" onclick="slTagGioc('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giocatrici','${esc(n).replace(/'/g, "\\'")}')">${fuoriRaduno(n) ? '<span class="xr">✕</span>' : ''}${esc(n)}<span class="muted" style="margin-left:6px">${st.s}/${st.t}${st.pp ? ' · ' + st.pp + 'pp' : ''}</span></button>`;
   }).join('') : '<span class="muted">Nessuna giocatrice: tocca «＋ aggiungi». Doppio tocco su una per toglierla.</span>';
   document.getElementById('slDifese').innerHTML = sl.difeseCustom.length ? sl.difeseCustom.map(n =>
-    `<button class="chip${slPend && slPend.difesa === n ? ' on' : ''}" onclick="slTagDif('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('difeseCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}</button>`).join('') : '<span class="muted">Nessuna difesa inserita.</span>';
+    `<button class="chip${slPend && slPend.difesa === n ? ' on' : ''}" onclick="slTagDif('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('difeseCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}${slTagStatsHTML('difesa', n)}</button>`).join('') : '<span class="muted">Nessuna difesa inserita.</span>';
   const gsel = (slPendPP || slPend || {}).gioco;
   document.getElementById('slGiochi').innerHTML = sl.giochiCustom.length ? sl.giochiCustom.map(n =>
-    `<button class="chip${gsel === n ? ' on' : ''}" onclick="slTagGioco('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giochiCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}</button>`).join('') : '<span class="muted">Nessun gioco. Tocca ＋ per aggiungere i tuoi schemi.</span>';
+    `<button class="chip${gsel === n ? ' on' : ''}" onclick="slTagGioco('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giochiCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}${slTagStatsHTML('gioco', n)}</button>`).join('') : '<span class="muted">Nessun gioco. Tocca ＋ per aggiungere i tuoi schemi.</span>';
 
   let ph = '';
   if (slPend) {
