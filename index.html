@@ -2246,10 +2246,16 @@ function slCourtTap(evt) {
     // stesso tocco, non due. Senza questo filtro un appoggio incerto della
     // Pencil trasformava da solo uno sbagliato in un canestro.
     if (now - (u.tsTocco || u.ts || 0) < SL_RIMBALZO) return;
-    // Ogni tocco successivo ribalta l'esito, all'infinito: sbagliato ->
-    // canestro -> sbagliato... Cosi' un tocco di troppo si corregge col tocco
-    // dopo, invece di lasciarti un tiro fantasma da annullare a mano.
+    /* Si puo' cambiare idea UNA volta sola: sbagliato -> canestro. Dal terzo
+       tocco in poi non succede piu' niente finche' la finestra non si chiude.
+
+       Prima ogni tocco ribaltava l'esito e un tocco di troppo — facile, per
+       l'abitudine presa quando l'app era difettosa — cancellava il canestro
+       appena registrato. Meglio ignorare il tocco in piu' che perdere un
+       canestro vero: se davvero hai sbagliato, c'e' ↩︎ Annulla. */
+    if (u.girato) { toast('Già registrato: ' + (u.esito === 'segnato' ? 'canestro' : 'sbagliato')); return; }
     u.esito = (u.esito === 'segnato') ? 'sbagliato' : 'segnato';
+    u.girato = true;
     u.tsTocco = now;
     save(); slRender();
     toast(u.esito === 'segnato' ? ('✔︎ Canestro da ' + (u.punti || 2)) : '✖︎ Tiro sbagliato');
