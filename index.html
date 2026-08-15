@@ -120,6 +120,12 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
 .fs{position:fixed !important;inset:0;z-index:900;background:var(--bg);padding:8px;overflow-y:auto}
 table.st.inc td, table.st.inc th { white-space:nowrap; font-size:12px; padding:4px 8px; }
 table.st.inc td.vuota { opacity:.28; text-align:center; }
+/* La ✕ del modo modifica: grande abbastanza da centrarla col dito o col
+   pennino (le linee guida Apple dicono 44px, qui siamo vicini) */
+.chip .rm{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+  width:20px;height:20px;margin-right:6px;border-radius:50%;background:#e02424;color:#fff;
+  font-size:12px;font-weight:800;line-height:1}
+.chip .rm:active{background:#ff5f6d}
 /* A schermo pieno l'intestazione si stringe: il marchio sparisce, restano le
    tre schede in piccolo. Sono ~40px recuperati in altezza, che sul campo
    della lavagna e sul canestro dello scouting si vedono tutti. */
@@ -231,6 +237,7 @@ table.st.inc td.cella.scarsa { background:rgba(255,95,109,0.15); box-shadow:inse
     <div class="card col" id="colAttacco">
       <div class="ttl">Attacco — giochi
         <button class="btn sm" style="float:right" onclick="slAddGioco()">＋</button>
+        <button class="btn sm" style="float:right;margin-right:6px" onclick="slToggleEdit('giochiCustom')" title="Mostra la ✕ per togliere i giochi">✏️</button>
         <button class="btn sm" style="float:right;margin-right:6px" onclick="slRipristina('giochiCustom')" title="Rimette la lista di partenza">↺</button></div>
       <div class="colonna" id="slGiochi"></div>
     </div>
@@ -248,6 +255,7 @@ table.st.inc td.cella.scarsa { background:rgba(255,95,109,0.15); box-shadow:inse
            devono essere sotto il pollice, non in fondo alla pagina -->
       <div class="ttl" style="margin-top:12px;">Giocatrici
         <button class="btn sm" style="float:right" onclick="slAddGiocatrice()">＋</button>
+        <button class="btn sm" style="float:right;margin-right:6px" onclick="slToggleEdit('giocatrici')" title="Mostra la ✕ per togliere le giocatrici">✏️</button>
         <button class="btn sm" style="float:right;margin-right:6px" onclick="slCaricaRoster()">↺ Italia</button></div>
       <div class="row" id="slGiocatrici"></div>
     </div>
@@ -255,6 +263,7 @@ table.st.inc td.cella.scarsa { background:rgba(255,95,109,0.15); box-shadow:inse
     <div class="card col" id="colDifesa">
       <div class="ttl">Difese subite <span style="text-transform:none;font-weight:500">— 1 tocco = sbagliano, 2 = canestro subito, 3 = fallo nostro</span>
         <button class="btn sm" style="float:right" onclick="slAddDifesa()">＋</button>
+        <button class="btn sm" style="float:right;margin-right:6px" onclick="slToggleEdit('difeseCustom')" title="Mostra la ✕ per togliere le difese">✏️</button>
         <button class="btn sm" style="float:right;margin-right:6px" onclick="slRipristina('difeseCustom')" title="Rimette la lista di partenza">↺</button></div>
       <div class="colonna" id="slDifese"></div>
     </div>
@@ -2161,7 +2170,8 @@ function lavSalva() {
 
 /* ========================== SCOUTING LIVE ========================== */
 const SL_W = 760, SL_H = 543;
-let slLastTap = 0, slTapTimer = null, slXY = { x: .5, y: .5 };
+const SL_DOPPIO = 900;   // quanto tempo hai per dire "no, era dentro"
+let slXY = { x: .5, y: .5 };
 let slUltimoId = null;   // ultimo evento registrato: e' a lui che si attaccano i tag
 
 // Stessa geometria di ITALBASKET WOMAN: garantisce che un tiro registrato qui
@@ -2199,9 +2209,26 @@ function slCourtTap(evt) {
   const p = (evt.changedTouches && evt.changedTouches[0]) || evt;
   slXY = { x: Math.min(1, Math.max(0, (p.clientX - r.left) / r.width)),
            y: Math.min(1, Math.max(0, (p.clientY - r.top) / r.height)) };
-  const now = Date.now();
-  if (slLastTap && now - slLastTap < 350) { clearTimeout(slTapTimer); slLastTap = 0; slAvvia('segnato'); }
-  else { slLastTap = now; slTapTimer = setTimeout(() => { slLastTap = 0; slAvvia('sbagliato'); }, 350); }
+  /* Il primo tocco registra SUBITO un tiro sbagliato: nessuna attesa, il
+     segno compare sul campo mentre l'azione va avanti. Se subito dopo tocchi
+     una seconda volta nello stesso punto, non nasce un secondo tiro: viene
+     corretto quello appena messo, che diventa canestro.
+
+     Prima c'era una finestra di 350 millisecondi: con l'Apple Pencil due
+     tocchi voluti arrivano quasi sempre piu' lenti di cosi', e il secondo
+     andava perso — usciva sempre "sbagliato". Ora la finestra e' quasi un
+     secondo e il controllo e' anche sulla posizione, quindi due tiri diversi
+     da punti diversi restano due tiri diversi. */
+  const now = Date.now(), u = slUltimoEvento();
+  if (u && u.tipo === 'tiro' && u.esito === 'sbagliato' && u.xPct != null
+      && now - (u.ts || 0) < SL_DOPPIO
+      && Math.hypot((u.xPct - slXY.x) * SL_W, (u.yPct - slXY.y) * SL_H) < 80) {
+    u.esito = 'segnato';
+    save(); slRender();
+    toast('✔︎ Corretto: canestro da ' + (u.punti || 2));
+    return;
+  }
+  slAvvia('sbagliato');
 }
 /* Il tiro si registra SUBITO al tocco sul campo: niente pannello da
    confermare. Dopo, se vuoi, tocchi il gioco e/o la giocatrice e il tag si
@@ -2365,6 +2392,18 @@ function slAddGiocatrice() {
 }
 function slAddDifesa() { const n = prompt('Difesa avversaria:'); if (n && n.trim()) { DB.scoutingLive.difeseCustom.push(n.trim()); save(); slRender(); } }
 function slAddGioco() { const n = prompt('Nome del gioco/schema:'); if (n && n.trim()) { DB.scoutingLive.giochiCustom.push(n.trim()); save(); slRender(); } }
+/* Togliere una voce col doppio tocco (o col tocco lungo) non funziona in modo
+   affidabile su iPad, tanto meno con l'Apple Pencil: il gesto spesso non viene
+   riconosciuto e sembra che l'app sia rotta. Qui invece c'e' un interruttore
+   ✏️ per ogni colonna: acceso, su ogni casella compare una ✕ da toccare.
+   Niente gesti da indovinare. */
+const slEdit = { giochiCustom: false, difeseCustom: false, giocatrici: false };
+function slToggleEdit(lista) { slEdit[lista] = !slEdit[lista]; slRender(); }
+function slBtnX(lista, n) {
+  return slEdit[lista]
+    ? `<span class="rm" onclick="event.stopPropagation();slRemove('${lista}','${esc(n).replace(/'/g, "\\'")}')">✕</span>`
+    : '';
+}
 function slRemove(lista, n) {
   if (!confirm('Togliere «' + n + '»?')) return;
   const a = DB.scoutingLive[lista]; const i = a.indexOf(n); if (i >= 0) a.splice(i, 1); save(); slRender();
@@ -2423,17 +2462,17 @@ function slRender() {
   const gio = sl.giocatrici, tgt = slUltimoEvento();
   document.getElementById('slGiocatrici').innerHTML = gio.length ? gio.map(n => {
     const st = slStatsGioc(n);
-    return `<button class="chip pl${fuoriRaduno(n) ? ' fuori' : ''}${tgt && tgt.giocatrice === n ? ' on' : ''}" onclick="slTagGioc('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giocatrici','${esc(n).replace(/'/g, "\\'")}')">${fuoriRaduno(n) ? '<span class="xr">✕</span>' : ''}${esc(n)}<span class="muted" style="margin-left:6px">${st.s}/${st.t}${st.pp ? ' · ' + st.pp + 'pp' : ''}</span></button>`;
-  }).join('') : '<span class="muted">Nessuna giocatrice: tocca «＋ aggiungi». Doppio tocco su una per toglierla.</span>';
+    return `<button class="chip pl${fuoriRaduno(n) ? ' fuori' : ''}${tgt && tgt.giocatrice === n ? ' on' : ''}" onclick="slTagGioc('${esc(n).replace(/'/g, "\\'")}')">${slBtnX('giocatrici', n)}${fuoriRaduno(n) ? '<span class="xr">✕</span>' : ''}${esc(n)}<span class="muted" style="margin-left:6px">${st.s}/${st.t}${st.pp ? ' · ' + st.pp + 'pp' : ''}</span></button>`;
+  }).join('') : '<span class="muted">Nessuna giocatrice: tocca «＋». Per toglierne una usa ✏️.</span>';
   document.getElementById('slDifese').innerHTML = sl.difeseCustom.length ? sl.difeseCustom.map(n => {
     const d = slStatsDifesa(n);
     const st = d.tot || d.fa ? `<span class="st">${d.sb}/${d.tot}·${d.pt}pt·${d.fa}f</span>` : '';
-    return `<button class="chip" title="${esc(n)}" onclick="slTagDif('${esc(n).replace(/'/g, "\\'")}')" oncontextmenu="event.preventDefault();slRemove('difeseCustom','${esc(n).replace(/'/g, "\\'")}')"><span class="nm">${esc(n)}</span>${st}</button>`;
+    return `<button class="chip" title="${esc(n)}" onclick="slTagDif('${esc(n).replace(/'/g, "\\'")}')">${slBtnX('difeseCustom', n)}<span class="nm">${esc(n)}</span>${st}</button>`;
   }).join('') : '<span class="muted">Nessuna difesa inserita.</span>';
   const ultimo = slUltimoEvento();
   const gsel = ultimo ? ultimo.gioco : null;
   document.getElementById('slGiochi').innerHTML = sl.giochiCustom.length ? sl.giochiCustom.map(n =>
-    `<button class="chip${gsel === n ? ' on' : ''}" title="${esc(n)}" onclick="slTagGioco('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giochiCustom','${esc(n).replace(/'/g, "\\'")}')"><span class="nm">${esc(n)}</span>${slTagStatsHTML('gioco', n)}</button>`).join('') : '<span class="muted">Nessun gioco. Tocca ＋ per aggiungere i tuoi schemi.</span>';
+    `<button class="chip${gsel === n ? ' on' : ''}" title="${esc(n)}" onclick="slTagGioco('${esc(n).replace(/'/g, "\\'")}')">${slBtnX('giochiCustom', n)}<span class="nm">${esc(n)}</span>${slTagStatsHTML('gioco', n)}</button>`).join('') : '<span class="muted">Nessun gioco. Tocca ＋ per aggiungere i tuoi schemi.</span>';
 
   // Riga di stato: dice a cosa si attaccano i tag adesso. Sostituisce il
   // vecchio pannello di conferma, che era un passaggio in piu' per niente.
