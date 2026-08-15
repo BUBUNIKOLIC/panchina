@@ -93,9 +93,13 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
 
 /* --- scouting: attacco a sinistra, campo al centro, difesa a destra --- */
 #slGriglia{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}
-@media (min-width:900px){#slGriglia{grid-template-columns:215px minmax(0,1fr) 215px;align-items:start}}
+@media (min-width:900px){#slGriglia{grid-template-columns:236px minmax(0,1fr) 236px;align-items:start}}
 #slGriglia .col{margin-bottom:0}
-.colonna{display:flex;flex-direction:column;gap:6px;max-height:66vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* I tasti ↺ e ＋ nel titolo sono flottanti: senza questo il loro ingombro
+   spingeva di lato la colonna sotto, che finiva larga la meta' del necessario
+   e mangiava i nomi lunghi con i puntini. flow-root li tiene dentro al titolo. */
+.col .ttl{display:flow-root}
+.colonna{display:flex;flex-direction:column;gap:3px;max-height:68vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 /* con liste lunghe (18 giochi) la colonna scorre da sola invece di allungare
    la pagina e spingere il campo fuori dallo schermo */
 #slGiocatrici{max-height:17vh;overflow-y:auto;-webkit-overflow-scrolling:touch;gap:5px}
@@ -103,14 +107,27 @@ table.st td{padding:6px 8px;border-top:1px solid var(--line)}
    tutte a video insieme al campo, senza scorrere la pagina */
 #slGiocatrici .chip{padding:6px 10px;font-size:13px}
 #slGiocatrici .chip .st{margin-left:5px;padding:0 4px;font-size:11px}
-.colonna .chip{width:100%;text-align:left}
+/* Caselle sottili: nome a sinistra su una riga sola (con i puntini se non
+   ci sta, il nome intero resta nel tooltip), statistiche schiacciate a
+   destra. Cosi' in colonna ce ne stanno circa il doppio. */
+.colonna .chip{width:100%;text-align:left;display:flex;align-items:center;gap:5px;
+  padding:4px 9px;border-radius:8px;font-size:12px;line-height:1.2;min-height:0}
+.colonna .chip .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* nelle colonne laterali le statistiche vanno a capo sotto al nome, se no
    escono dalla casella e non si leggono */
-.colonna .chip .st{display:block;margin-left:0;margin-top:5px;width:fit-content;max-width:100%;font-size:11px;overflow:hidden;text-overflow:ellipsis}
+.colonna .chip .st{flex:0 0 auto;display:inline-block;margin-left:0;margin-top:0;padding:0 5px;font-size:10px;letter-spacing:-0.2px}
 @media (max-width:899px){.colonna{flex-direction:row;flex-wrap:wrap}.colonna .chip{width:auto}}
 .fs{position:fixed !important;inset:0;z-index:900;background:var(--bg);padding:8px;overflow-y:auto}
 table.st.inc td, table.st.inc th { white-space:nowrap; font-size:12px; padding:4px 8px; }
 table.st.inc td.vuota { opacity:.28; text-align:center; }
+/* A schermo pieno l'intestazione si stringe: il marchio sparisce, restano le
+   tre schede in piccolo. Sono ~40px recuperati in altezza, che sul campo
+   della lavagna e sul canestro dello scouting si vedono tutti. */
+body.pieno header { padding:2px 8px; }
+body.pieno header .brand { display:none; }
+body.pieno header .tabs { margin-left:0; width:100%; }
+body.pieno .tab { padding:4px 10px; font-size:12px; }
+body.pieno main { padding-top:6px; }
 table.st.inc td.cella { line-height:1.25; }
 table.st.inc td.cella .pc { opacity:.75; font-size:11px; }
 table.st.inc td.cella .pp { display:block; font-size:10.5px; opacity:.62; }
@@ -125,6 +142,7 @@ table.st.inc td.cella.scarsa { background:rgba(255,95,109,0.15); box-shadow:inse
     <button class="tab active" id="tabLav" onclick="setTab('lav')">✏️ Lavagna</button>
     <button class="tab" id="tabScout" onclick="setTab('scout')">🎯 Scouting</button>
     <button class="tab" id="tabDati" onclick="setTab('dati')">📤 Dati</button>
+    <button class="tab" id="tabFs" onclick="appSchermoPieno()" title="Schermo pieno: sparisce tutto il contorno del browser e resta solo l'app. Si esce con Esc.">⛶</button>
   </div>
 </header>
 <main>
@@ -1916,6 +1934,34 @@ function toast(msg, err) {
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const uid = p => p + Date.now() + '_' + Math.floor(Math.random() * 100000);
 
+/* Schermo pieno vero: il browser sparisce (barra indirizzi, tab, tutto) e
+   restano solo campo e tasti. Sul Mac in Chrome equivale a Ctrl+Cmd+F, ma
+   partendo dall'app si porta dietro anche l'intestazione ridotta, che e' lo
+   spazio che serve davvero in panchina. Si esce con Esc. */
+function appSchermoPieno() {
+  const d = document, e = d.documentElement;
+  const attivo = d.fullscreenElement || d.webkitFullscreenElement;
+  if (!attivo) {
+    const vai = e.requestFullscreen || e.webkitRequestFullscreen;
+    if (vai) { try { vai.call(e); } catch (err) { /* alcuni browser lo negano fuori da un tocco */ } }
+    d.body.classList.add('pieno');
+  } else {
+    const esci = d.exitFullscreen || d.webkitExitFullscreen;
+    if (esci) { try { esci.call(d); } catch (err) {} }
+    d.body.classList.remove('pieno');
+  }
+  const b = d.getElementById('tabFs');
+  if (b) b.classList.toggle('active', d.body.classList.contains('pieno'));
+  setTimeout(() => { if (typeof deRedraw === 'function' && deState && deState.frames) deRedraw(); slRender(); }, 260);
+}
+// Uscendo dallo schermo pieno con Esc (senza toccare il tasto) l'app se ne
+// accorge e rimette l'intestazione normale.
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    document.body.classList.remove('pieno');
+    const b = document.getElementById('tabFs'); if (b) b.classList.remove('active');
+  }
+});
 function setTab(t) {
   ['lav', 'scout', 'dati'].forEach(k => {
     document.getElementById('view' + k[0].toUpperCase() + k.slice(1)).classList.toggle('active', k === t);
@@ -2339,10 +2385,12 @@ function slStatsTag(campo, n) {
 function slTagStatsHTML(campo, n) {
   const st = slStatsTag(campo, n);
   if (!st.usi) return '';
+  // scritte corte: nelle colonne lo spazio in larghezza e' poco e la casella
+  // deve restare su una riga sola, se no ne stanno la meta'
   return '<span class="st">' + st.s + '/' + st.t
-    + (st.pt ? ' · ' + st.pt + 'pt' : '')
-    + (st.pp ? ' · ' + st.pp + 'pp' : '')
-    + ' · ' + st.ppp.toFixed(2) + 'ppp</span>';
+    + (st.pt ? '·' + st.pt + 'pt' : '')
+    + (st.pp ? '·' + st.pp + 'pp' : '')
+    + '·' + st.ppp.toFixed(2) + '</span>';
 }
 function slStatsGioc(n) {
   let t = 0, s = 0, pp = 0;
@@ -2379,13 +2427,13 @@ function slRender() {
   }).join('') : '<span class="muted">Nessuna giocatrice: tocca «＋ aggiungi». Doppio tocco su una per toglierla.</span>';
   document.getElementById('slDifese').innerHTML = sl.difeseCustom.length ? sl.difeseCustom.map(n => {
     const d = slStatsDifesa(n);
-    const st = d.tot || d.fa ? `<span class="st">${d.sb}/${d.tot} · ${d.pt}pt · ${d.fa}f</span>` : '';
-    return `<button class="chip" onclick="slTagDif('${esc(n).replace(/'/g, "\\'")}')" oncontextmenu="event.preventDefault();slRemove('difeseCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}${st}</button>`;
+    const st = d.tot || d.fa ? `<span class="st">${d.sb}/${d.tot}·${d.pt}pt·${d.fa}f</span>` : '';
+    return `<button class="chip" title="${esc(n)}" onclick="slTagDif('${esc(n).replace(/'/g, "\\'")}')" oncontextmenu="event.preventDefault();slRemove('difeseCustom','${esc(n).replace(/'/g, "\\'")}')"><span class="nm">${esc(n)}</span>${st}</button>`;
   }).join('') : '<span class="muted">Nessuna difesa inserita.</span>';
   const ultimo = slUltimoEvento();
   const gsel = ultimo ? ultimo.gioco : null;
   document.getElementById('slGiochi').innerHTML = sl.giochiCustom.length ? sl.giochiCustom.map(n =>
-    `<button class="chip${gsel === n ? ' on' : ''}" onclick="slTagGioco('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giochiCustom','${esc(n).replace(/'/g, "\\'")}')">${esc(n)}${slTagStatsHTML('gioco', n)}</button>`).join('') : '<span class="muted">Nessun gioco. Tocca ＋ per aggiungere i tuoi schemi.</span>';
+    `<button class="chip${gsel === n ? ' on' : ''}" title="${esc(n)}" onclick="slTagGioco('${esc(n).replace(/'/g, "\\'")}')" ondblclick="slRemove('giochiCustom','${esc(n).replace(/'/g, "\\'")}')"><span class="nm">${esc(n)}</span>${slTagStatsHTML('gioco', n)}</button>`).join('') : '<span class="muted">Nessun gioco. Tocca ＋ per aggiungere i tuoi schemi.</span>';
 
   // Riga di stato: dice a cosa si attaccano i tag adesso. Sostituisce il
   // vecchio pannello di conferma, che era un passaggio in piu' per niente.
