@@ -2177,7 +2177,8 @@ function lavSalva() {
 
 /* ========================== SCOUTING LIVE ========================== */
 const SL_W = 760, SL_H = 543;
-const SL_DOPPIO = 900;   // quanto tempo hai per dire "no, era dentro"
+const SL_DOPPIO = 1100;   // quanto tempo hai per ribaltare l'esito
+const SL_RIMBALZO = 130;  // sotto questa soglia e' un rimbalzo del pennino, non un tocco
 let slXY = { x: .5, y: .5 };
 let slUltimoId = null;   // ultimo evento registrato: e' a lui che si attaccano i tag
 
@@ -2226,13 +2227,32 @@ function slCourtTap(evt) {
      andava perso — usciva sempre "sbagliato". Ora la finestra e' quasi un
      secondo e il controllo e' anche sulla posizione, quindi due tiri diversi
      da punti diversi restano due tiri diversi. */
+  /* Conta SOLO il tempo, non il punto in cui tocchi.
+
+     C'era anche un controllo sulla distanza, ed era sbagliato: la punta
+     dell'Apple Pencil e' sottilissima e il secondo tocco cade sempre qualche
+     millimetro piu' in la', quindi veniva letto come un tiro nuovo. Col dito
+     non si notava perche' il polpastrello copre mezzo centimetro.
+
+     Togliere la distanza non crea ambiguita': due tiri veri a meno di un
+     secondo l'uno dall'altro non esistono in una partita di pallacanestro.
+     Il segno resta dove hai toccato la prima volta, che e' il punto giusto. */
   const now = Date.now(), u = slUltimoEvento();
-  if (u && u.tipo === 'tiro' && u.esito === 'sbagliato' && u.xPct != null
-      && now - (u.ts || 0) < SL_DOPPIO
-      && Math.hypot((u.xPct - slXY.x) * SL_W, (u.yPct - slXY.y) * SL_H) < 80) {
-    u.esito = 'segnato';
+  const dentroTempo = u && u.tipo === 'tiro' && u.xPct != null
+    && now - (u.tsTocco || u.ts || 0) < SL_DOPPIO;
+
+  if (dentroTempo) {
+    // Rimbalzo del pennino: due contatti a distanza di un soffio sono lo
+    // stesso tocco, non due. Senza questo filtro un appoggio incerto della
+    // Pencil trasformava da solo uno sbagliato in un canestro.
+    if (now - (u.tsTocco || u.ts || 0) < SL_RIMBALZO) return;
+    // Ogni tocco successivo ribalta l'esito, all'infinito: sbagliato ->
+    // canestro -> sbagliato... Cosi' un tocco di troppo si corregge col tocco
+    // dopo, invece di lasciarti un tiro fantasma da annullare a mano.
+    u.esito = (u.esito === 'segnato') ? 'sbagliato' : 'segnato';
+    u.tsTocco = now;
     save(); slRender();
-    toast('✔︎ Corretto: canestro da ' + (u.punti || 2));
+    toast(u.esito === 'segnato' ? ('✔︎ Canestro da ' + (u.punti || 2)) : '✖︎ Tiro sbagliato');
     return;
   }
   slAvvia('sbagliato');
@@ -2245,6 +2265,7 @@ function slAvvia(esito) {
   const ev = { tipo: 'tiro', esito, categoria: 'Attacco', difesa: null, giocatrice: null,
                gioco: null, xPct: slXY.x, yPct: slXY.y, punti };
   slPushEvento(ev);
+  ev.tsTocco = ev.ts;
   slUltimoId = ev.id;
   save(); slRender();
   toast(esito === 'segnato' ? ('✔︎ Canestro da ' + punti) : '✖︎ Tiro sbagliato');
