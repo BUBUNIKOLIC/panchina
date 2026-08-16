@@ -132,6 +132,12 @@ table.st.inc td.vuota { opacity:.28; text-align:center; }
   font-size:12px;font-weight:800;line-height:1}
 .chip .rm:active{background:#ff5f6d}
 .chip.edit{border-color:#ffd166;border-style:dashed}
+/* Gruppo dei tiri liberi: + e - grandi e vicini, e sotto il pollice */
+.tl{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border:1px solid var(--line);
+  border-radius:10px;background:var(--panel2)}
+.tl b{font-size:12px;letter-spacing:.04em;color:var(--mu)}
+.tl .btn{min-width:40px;font-size:17px;font-weight:800;padding:5px 10px;line-height:1}
+.tl .btn.no{background:#c0392b;border-color:#c0392b;color:#fff}
 .btn.sm.acceso{background:#ffd166;border-color:#ffd166;color:#12203a}
 /* A schermo pieno l'intestazione si stringe: il marchio sparisce, restano le
    tre schede in piccolo. Sono ~40px recuperati in altezza, che sul campo
@@ -254,8 +260,11 @@ table.st.inc td.cella.scarsa { background:rgba(255,95,109,0.15); box-shadow:inse
       <div id="slCourtWrap"><canvas id="slCourt" width="760" height="543"></canvas></div>
       <div class="row" style="margin-top:9px;">
         <button class="btn" onclick="slAvviaPP()">🔄 Palla persa</button>
-        <button class="btn" onclick="slAvviaTL('segnato')">🎯 TL ✓</button>
-        <button class="btn" onclick="slAvviaTL('sbagliato')">✖️ TL ✗</button>
+        <span class="tl" title="Un tocco per ogni tiro libero: fino a 3 restano nella stessa serie">
+          <b>TL</b>
+          <button class="btn ok" onclick="slTL('segnato')">+</button>
+          <button class="btn no" onclick="slTL('sbagliato')">−</button>
+        </span>
         <button class="btn sm" style="margin-left:auto" onclick="slUndo()">↩︎ Annulla</button>
       </div>
       <!-- le giocatrici stanno QUI, attaccate al campo: durante la partita
@@ -1870,9 +1879,10 @@ function fuoriRaduno(n) {
    Si aggiungono con «＋», si tolgono con doppio tocco, e con «↺ base» si
    rimette la lista di partenza. Tutto quello che cambi resta salvato
    sull'iPad da solo: non c'è niente da premere per salvare. */
-const GIOCHI_STANDARD = ['CONTROPIEDE', 'TRANSIZIONE', 'DRAG', '#BASE', '#BASE 1', '#BASE 5',
+const GIOCHI_STANDARD = ['CONTROPIEDE', 'TRANSIZIONE', 'DRAG', '#BASE', '#BASE 1', '#BASE 2', '#BASE 5',
   '#2 ALTO', '#2 LATO', '#5 BASSO', '#5 LATO', '#POLLICE', '#POLLICE BASSO', '#ELLE', '#CORNA',
-  'RIMESSA FONDO', 'RIMESSA LATO', 'CASUALE', 'VS ZONA'];
+  'RIMESSA FONDO', 'RIMESSA LATO', 'RIM. OFF.', 'CASUALE', 'VS ZONA'];
+const LISTE_VERSIONE = 2;   // alzalo quando aggiungi giochi o difese di serie
 const DIFESE_STANDARD = ['DIFESA CP', 'VS TRANSIZIONE', 'DIFESA AREA', 'DIFESA POST BASSO',
   'DIFESA 1C1 FRONTE', 'USCITA BLOCCHI', 'FLARE', 'PICK CENTRALE', 'PICK LATERALE', 'RIM. OFF.'];
 // Le difese generiche della primissima versione: se sono ancora quelle
@@ -1901,7 +1911,8 @@ function load() {
         quartoCorrente: s.quartoCorrente || '1',
         punteggio: (s.punteggio && typeof s.punteggio === 'object') ? s.punteggio : { noi: 0, avversari: 0 },
         punteggioManuale: (s.punteggioManuale && typeof s.punteggioManuale === 'object') ? s.punteggioManuale : {},
-        listeBase: s.listeBase || 0
+        listeBase: s.listeBase || 0,
+        margini: s.margini || 0
       };
     }
   } catch (e) { /* dati illeggibili: si riparte puliti invece di bloccare l'app */ }
@@ -1913,15 +1924,42 @@ function load() {
   // avevi aggiunto anche una sola voce a mano (era il caso di «contropiede»),
   // le tue diciotto non arrivavano mai. Da qui in poi il segno «listeBase»
   // dice che il travaso e' gia' stato fatto, e le tue modifiche non si toccano.
-  if (!DB.scoutingLive.listeBase) {
-    const miei = DB.scoutingLive.giochiCustom.filter(
-      x => !GIOCHI_STANDARD.some(s => s.toLowerCase() === String(x).trim().toLowerCase()));
-    DB.scoutingLive.giochiCustom = GIOCHI_STANDARD.concat(miei);
-    const vecchie = DB.scoutingLive.difeseCustom.join('|') === DIFESE_VECCHIE.join('|');
-    const mieD = vecchie ? [] : DB.scoutingLive.difeseCustom.filter(
-      x => !DIFESE_STANDARD.some(s => s.toLowerCase() === String(x).trim().toLowerCase()));
-    DB.scoutingLive.difeseCustom = DIFESE_STANDARD.concat(mieD);
-    DB.scoutingLive.listeBase = 1;
+  /* Il numero di versione serve a far arrivare le voci NUOVE anche a chi ha
+     gia' la sua lista salvata sul dispositivo. Senza, aggiungere «RIM. OFF.»
+     o «#BASE 2» al programma non cambiava niente per chi l'app la usava gia':
+     la lista sul suo iPad restava quella vecchia. Ogni volta che aggiungo
+     voci di serie alzo LISTE_VERSIONE e le mancanti si infilano da sole,
+     senza toccare quelle aggiunte a mano ne' l'ordine gia' scelto. */
+  const v = DB.scoutingLive.listeBase || 0;
+  if (v < LISTE_VERSIONE) {
+    if (!v) {
+      const miei = DB.scoutingLive.giochiCustom.filter(
+        x => !GIOCHI_STANDARD.some(s => s.toLowerCase() === String(x).trim().toLowerCase()));
+      DB.scoutingLive.giochiCustom = GIOCHI_STANDARD.concat(miei);
+      const vecchie = DB.scoutingLive.difeseCustom.join('|') === DIFESE_VECCHIE.join('|');
+      const mieD = vecchie ? [] : DB.scoutingLive.difeseCustom.filter(
+        x => !DIFESE_STANDARD.some(s => s.toLowerCase() === String(x).trim().toLowerCase()));
+      DB.scoutingLive.difeseCustom = DIFESE_STANDARD.concat(mieD);
+    } else {
+      // aggiornamento: infilo solo quelle che mancano, nella posizione giusta
+      const infila = (lista, base) => {
+        const cur = DB.scoutingLive[lista];
+        const ha = n => cur.some(x => String(x).trim().toLowerCase() === n.toLowerCase());
+        base.forEach((n, i) => {
+          if (ha(n)) return;
+          // provo a metterla dopo la voce di serie che la precede
+          let pos = cur.length;
+          for (let k = i - 1; k >= 0; k--) {
+            const j = cur.findIndex(x => String(x).trim().toLowerCase() === base[k].toLowerCase());
+            if (j >= 0) { pos = j + 1; break; }
+          }
+          cur.splice(pos, 0, n);
+        });
+      };
+      infila('giochiCustom', GIOCHI_STANDARD);
+      infila('difeseCustom', DIFESE_STANDARD);
+    }
+    DB.scoutingLive.listeBase = LISTE_VERSIONE;
     try { save(); } catch (e) { /* niente */ }
   }
 }
@@ -2177,6 +2215,15 @@ function lavSalva() {
 
 /* ========================== SCOUTING LIVE ========================== */
 const SL_W = 760, SL_H = 543;
+/* Spazio fuori dalle linee: serve per taggare le rimesse, che partono da fuori
+   campo. Il campo vero viene disegnato dentro questo riquadro piu' piccolo,
+   cosi' resta un bordo su tutti e quattro i lati: laterali per le rimesse di
+   lato, sotto per quelle dal fondo, sopra per l'oltre-meta-campo. */
+const SL_MX = 0.085, SL_MT = 0.075, SL_MB = 0.055;
+const slCampo = () => ({
+  x: SL_W * SL_MX, y: SL_H * SL_MT,
+  w: SL_W * (1 - 2 * SL_MX), h: SL_H * (1 - SL_MT - SL_MB)
+});
 const SL_DOPPIO = 1100;   // quanto tempo hai per ribaltare l'esito
 const SL_RIMBALZO = 130;  // sotto questa soglia e' un rimbalzo del pennino, non un tocco
 let slXY = { x: .5, y: .5 };
@@ -2185,7 +2232,10 @@ let slUltimoId = null;   // ultimo evento registrato: e' a lui che si attaccano 
 // Stessa geometria di ITALBASKET WOMAN: garantisce che un tiro registrato qui
 // valga 2 o 3 punti esattamente come varrebbe là.
 function slShotValue(xPct, yPct) {
-  const w = SL_W, h = SL_H, x = xPct * w, y = yPct * h, cx = w / 2;
+  // le coordinate sono sull'intera tela: qui si riportano dentro al campo,
+  // perche' il valore del tiro dipende dalla geometria del campo, non del bordo
+  const c = slCampo();
+  const w = c.w, h = c.h, x = xPct * SL_W - c.x, y = yPct * SL_H - c.y, cx = w / 2;
   const baseline = h - 5, scale = w / 15, threeRadius = w * 0.48;
   const hoopY = baseline - scale * 1.575;
   const ang3 = Math.PI * 0.06, dx3 = threeRadius * Math.cos(ang3), dy3 = threeRadius * Math.sin(ang3);
@@ -2195,7 +2245,21 @@ function slShotValue(xPct, yPct) {
 function slDrawCourt() {
   const c = document.getElementById('slCourt'); if (!c) return;
   const ctx = c.getContext('2d');
-  drawCourt(ctx, SL_W, SL_H, 'half', 'dark');
+  const cp = slCampo();
+  // fuoricampo piu' chiaro, campo piu' scuro: il bordo si vede a colpo d'occhio
+  ctx.fillStyle = '#16294a';
+  ctx.fillRect(0, 0, SL_W, SL_H);
+  ctx.fillStyle = '#0a1830';
+  ctx.fillRect(cp.x, cp.y, cp.w, cp.h);
+  ctx.save();
+  ctx.translate(cp.x, cp.y);
+  drawCourt(ctx, cp.w, cp.h, 'half', 'dark');
+  ctx.restore();
+  ctx.fillStyle = 'rgba(200,220,255,0.35)';
+  ctx.font = '600 12px sans-serif';
+  ctx.textAlign = 'left';  ctx.fillText('FUORI CAMPO', 8, SL_H - 8);
+  ctx.textAlign = 'right'; ctx.fillText('OLTRE LA METÀ', SL_W - 8, 15);
+  ctx.textAlign = 'start';
   slEventiPartita().forEach(e => {
     if (e.tipo !== 'tiro' || e.xPct == null) return;
     const x = e.xPct * SL_W, y = e.yPct * SL_H, seg = e.esito === 'segnato';
@@ -2280,10 +2344,27 @@ function slAvviaPP() {
   const ev = { tipo: 'pp', giocatrice: null, gioco: null };
   slPushEvento(ev); slUltimoId = ev.id; slRender(); toast('🔄 Palla persa — tagga gioco o giocatrice');
 }
+/* Una serie di tiri liberi e' UN viaggio in lunetta, non tre eventi separati:
+   tocchi + o - una volta per ogni tiro (possono essere 1, 2 o 3) e restano
+   raccolti in un evento solo. Cosi' il gioco lo tagghi una volta sola e le
+   statistiche dello schema contano il viaggio, non l'ultimo tiro. */
+const SL_TL_FINESTRA = 20000;
+function slTL(esito) {
+  const u = slUltimoEvento();
+  if (u && u.categoria === 'TL' && Date.now() - (u.ts || 0) < SL_TL_FINESTRA && (u.tentati || 1) < 3) {
+    u.tentati = (u.tentati || 1) + 1;
+    if (esito === 'segnato') { u.segnati = (u.segnati || 0) + 1; u.punti = u.segnati; u.esito = 'segnato'; }
+    save(); slRender();
+    toast('🎯 Liberi ' + (u.segnati || 0) + '/' + u.tentati);
+    return;
+  }
+  slAvviaTL(esito);
+}
 function slAvviaTL(esito) {
-  const ev = { tipo: 'tiro', esito, categoria: 'TL', difesa: null, giocatrice: null, punti: 1 };
+  const ev = { tipo: 'tiro', esito, categoria: 'TL', difesa: null, giocatrice: null,
+               tentati: 1, segnati: esito === 'segnato' ? 1 : 0, punti: esito === 'segnato' ? 1 : 0 };
   slPushEvento(ev); slUltimoId = ev.id;
-  save(); slRender(); toast(esito === 'segnato' ? '🎯 Libero segnato' : '✖︎ Libero sbagliato');
+  save(); slRender(); toast(esito === 'segnato' ? '🎯 Liberi 1/1' : '🎯 Liberi 0/1');
 }
 function slUltimoEvento() {
   const ev = DB.scoutingLive.eventi;
@@ -2359,6 +2440,21 @@ function slStatsDifesa(n) {
    all'altra) ma ricavato dagli eventi di QUESTA partita, piu' un aggiustamento
    manuale per i punti che non si taggano (liberi degli altri, canestri persi
    mentre si guarda altrove...). */
+/* I tiri registrati prima che il campo avesse il bordo fuoricampo erano
+   riferiti a tutta la tela. Ora la tela e' piu' grande del campo, quindi senza
+   questa conversione i vecchi tiri comparirebbero spostati in alto a sinistra.
+   Si fa una volta sola, poi il flag resta. */
+function slMigraMargini() {
+  const sl = DB.scoutingLive;
+  if (sl.margini) return;
+  sl.eventi.forEach(e => {
+    if (!e || e.xPct == null) return;
+    e.xPct = SL_MX + e.xPct * (1 - 2 * SL_MX);
+    e.yPct = SL_MT + e.yPct * (1 - SL_MT - SL_MB);
+  });
+  sl.margini = 1;
+  save();
+}
 function slSetPartita(v) { DB.scoutingLive.partitaCorrente = v; save(); slRender(); }
 function slManuale() {
   const sl = DB.scoutingLive;
@@ -2371,7 +2467,8 @@ function slPunteggio() {
   const m = slManuale();
   let noi = m.noi || 0, avv = m.avversari || 0;
   slEventiPartita().forEach(e => {
-    if (e.tipo === 'tiro' && e.esito === 'segnato') noi += (e.punti || 2);
+    if (e.tipo === 'tiro' && e.categoria === 'TL') noi += (e.segnati != null ? e.segnati : (e.esito === 'segnato' ? 1 : 0));
+    else if (e.tipo === 'tiro' && e.esito === 'segnato') noi += (e.punti || 2);
     else if (e.tipo === 'dif' && e.esito === 'canestro') avv += (e.punti || 2);
   });
   return { noi: Math.max(0, noi), avversari: Math.max(0, avv) };
@@ -2544,7 +2641,9 @@ function slRender() {
   const u = slUltimoEvento();
   document.getElementById('slPending').innerHTML = !u ? '' :
     `<div class="pend"><b>Ultimo:</b> ${u.tipo === 'pp' ? 'palla persa'
-      : (u.categoria === 'TL' ? 'tiro libero ' : 'tiro da ' + (u.punti || 2) + ' ') + (u.esito === 'segnato' ? 'SEGNATO' : 'sbagliato')}
+      : (u.categoria === 'TL'
+          ? 'tiri liberi ' + (u.segnati != null ? u.segnati : (u.esito === 'segnato' ? 1 : 0)) + '/' + (u.tentati || 1)
+          : 'tiro da ' + (u.punti || 2) + ' ' + (u.esito === 'segnato' ? 'SEGNATO' : 'sbagliato'))}
       ${u.gioco ? ' · <b>' + esc(u.gioco) + '</b>' : ''}${u.giocatrice ? ' · ' + esc(u.giocatrice) : ''}
       <span class="muted"> — tocca il <b>gioco</b> e la <b>giocatrice</b> (puoi metterli tutti e due; ritoccando togli il tag)</span></div>`;
 
@@ -2552,7 +2651,7 @@ function slRender() {
   let t2 = 0, s2 = 0, t3 = 0, s3 = 0, tl = 0, stl = 0, pp = 0;
   ev.forEach(e => {
     if (e.tipo === 'pp') { pp++; return; }
-    if (e.categoria === 'TL') { tl++; if (e.esito === 'segnato') stl++; }
+    if (e.categoria === 'TL') { tl += (e.tentati || 1); stl += (e.segnati != null ? e.segnati : (e.esito === 'segnato' ? 1 : 0)); }
     else if (e.punti === 3) { t3++; if (e.esito === 'segnato') s3++; }
     else { t2++; if (e.esito === 'segnato') s2++; }
   });
@@ -2691,6 +2790,7 @@ function datiRender() {
 
 /* ========================== AVVIO ========================== */
 load();
+slMigraMargini();
 lavRender(); slRender(); datiRender();
 // pointerup copre dito, pennino e mouse con un solo gestore: evita sia il
 // doppio evento (touch + click sintetico) sia il caso opposto, un dispositivo
