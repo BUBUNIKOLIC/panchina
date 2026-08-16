@@ -371,10 +371,10 @@ function drawCourt(ctx, w, h, mode, theme) {
       ctx.strokeRect(side === 0 ? 3 : w - 3 - w * 0.14, h / 2 - paintH / 2, w * 0.14, paintH);
       ctx.beginPath(); ctx.arc(hoopX, h / 2, 5, 0, Math.PI * 2); ctx.stroke();
       // Le due linee rette dell'arco da 3 punti, dal fondo campo fino all'inizio dell'arco.
-      const r3 = h * 0.45;
-      const ang = Math.PI * 0.42;
-      const dx = r3 * Math.cos(ang);
-      const dy = r3 * Math.sin(ang);
+      const r3 = h * 0.45;                  // 6.75 m su un campo largo 15 m
+      const dy = h * 0.44;                  // rette a 0.90 m dalle linee laterali
+      const dx = Math.sqrt(Math.max(0, r3 * r3 - dy * dy));
+      const ang = Math.atan2(dy, dx);
       const arcX = side === 0 ? hoopX + dx : hoopX - dx;
       ctx.beginPath(); ctx.moveTo(baseX, h / 2 - dy); ctx.lineTo(arcX, h / 2 - dy); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(baseX, h / 2 + dy); ctx.lineTo(arcX, h / 2 + dy); ctx.stroke();
@@ -433,7 +433,12 @@ function deDrawHalfLines(ctx, w, h) {
   const paintW = w * 0.327;
   const paintH = scale * 5.8;
   const ftRadius = w * 0.12;
-  const threeRadius = w * 0.48;
+  /* Misure FIBA vere: arco da 6.75 m dal centro del canestro, e le due rette
+     parallele alle linee laterali a 0.90 m da esse. Prima l'arco era 7.20 m e
+     le rette finivano a 0.43 m dal fondo laterale: il campo era sbagliato
+     proprio negli angoli, dove il tiro da tre e' piu' corto e si tira di piu'. */
+  const threeRadius = scale * 6.75;
+  const threeX = scale * (7.5 - 0.90);            // 6.60 m dal centro
   const hoopY = baseline - scale * 1.575;
   ctx.strokeRect(cx - paintW / 2, baseline - paintH, paintW, paintH);
   ctx.beginPath(); ctx.arc(cx, baseline - paintH, ftRadius, Math.PI, Math.PI * 2); ctx.stroke();
@@ -442,12 +447,17 @@ function deDrawHalfLines(ctx, w, h) {
   // inizia l'arco, non su un punto arbitrario (cx±threeRadius, hoopY) --
   // stesso calcolo (ang/dx/dy) già usato correttamente nel ramo 'full' qui
   // sopra, altrimenti si crea la "cucitura"/imperfezione visibile segnalata.
-  const ang3 = Math.PI * 0.06;
-  const dx3 = threeRadius * Math.cos(ang3);
-  const dy3 = threeRadius * Math.sin(ang3);
-  ctx.beginPath(); ctx.arc(cx, hoopY, threeRadius, ang3, Math.PI - ang3, true); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx - dx3, baseline); ctx.lineTo(cx - dx3, hoopY + dy3); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx + dx3, baseline); ctx.lineTo(cx + dx3, hoopY + dy3); ctx.stroke();
+  // dove l'arco incontra le rette: e' il punto che chiude il disegno senza cuciture
+  const dx3 = threeX;
+  const dy3 = Math.sqrt(Math.max(0, threeRadius * threeRadius - dx3 * dx3));
+  const ang3 = Math.atan2(dy3, dx3);
+  /* Il punto di raccordo sta 2.99 m dal fondo, quindi PIU' LONTANO del canestro
+     (che e' a 1.575 m): sulla tela e' hoopY - dy3, non + dy3. Con il segno
+     sbagliato le due rette venivano lunghe venti centimetri e l'arco scendeva
+     fin quasi sul fondo campo. */
+  ctx.beginPath(); ctx.arc(cx, hoopY, threeRadius, -ang3, -Math.PI + ang3, true); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - dx3, baseline); ctx.lineTo(cx - dx3, hoopY - dy3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + dx3, baseline); ctx.lineTo(cx + dx3, hoopY - dy3); ctx.stroke();
   ctx.beginPath(); ctx.arc(cx, hoopY, 5, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(cx - 16, hoopY - 9); ctx.lineTo(cx + 16, hoopY - 9); ctx.stroke();
 }
@@ -2236,10 +2246,11 @@ function slShotValue(xPct, yPct) {
   // perche' il valore del tiro dipende dalla geometria del campo, non del bordo
   const c = slCampo();
   const w = c.w, h = c.h, x = xPct * SL_W - c.x, y = yPct * SL_H - c.y, cx = w / 2;
-  const baseline = h - 5, scale = w / 15, threeRadius = w * 0.48;
+  const baseline = h - 5, scale = w / 15, threeRadius = scale * 6.75;
   const hoopY = baseline - scale * 1.575;
-  const ang3 = Math.PI * 0.06, dx3 = threeRadius * Math.cos(ang3), dy3 = threeRadius * Math.sin(ang3);
-  const is3 = (y >= hoopY + dy3) ? Math.abs(x - cx) > dx3 : Math.hypot(x - cx, y - hoopY) > threeRadius;
+  const dx3 = scale * (7.5 - 0.90);
+  const dy3 = Math.sqrt(Math.max(0, threeRadius * threeRadius - dx3 * dx3));
+  const is3 = (y >= hoopY - dy3) ? Math.abs(x - cx) > dx3 : Math.hypot(x - cx, y - hoopY) > threeRadius;
   return is3 ? 3 : 2;
 }
 function slDrawCourt() {
