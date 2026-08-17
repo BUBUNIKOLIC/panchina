@@ -89,6 +89,25 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px}
 .chip.pl.fuori .xr{color:#e02424;font-weight:900;margin-right:5px;opacity:1}
 .score{font-size:26px;font-weight:800;letter-spacing:1px}
 .pend{background:#1d2b45;border:1px solid var(--az);border-radius:12px;padding:12px;margin-bottom:12px}
+/* cronometro: numeri a larghezza fissa, se no la cifra balla ogni secondo */
+.crono .t{font-variant-numeric:tabular-nums;font-size:22px;font-weight:800;letter-spacing:1px;
+  padding:3px 11px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);cursor:pointer}
+.crono .t.va{background:#12351f;border-color:#2ea043;color:#7ee2a0}
+/* riepilogo dal vivo */
+#slRiep .per{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+#slRiep .per .chip{padding:5px 11px;font-size:12px;font-weight:700}
+#slRiep .tot{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+#slRiep .tot div{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px 11px;min-width:78px}
+#slRiep .tot b{display:block;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.15}
+#slRiep .tot span{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mu)}
+#slRiep table.st td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+#slRiep tr.buona td{background:rgba(46,160,67,.15)}
+#slRiep tr.scarsa td{background:rgba(224,36,36,.15)}
+.bar{position:relative;height:15px;border-radius:5px;background:rgba(255,255,255,.09);min-width:76px}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:#2ea043;opacity:.5}
+.bar.rossa i{background:#e02424}
+.bar span{position:relative;font-size:11px;font-weight:800;padding-left:6px;line-height:15px;
+  font-variant-numeric:tabular-nums}
 table.st{width:100%;border-collapse:collapse;font-size:12.5px}
 table.st th{background:var(--panel2);color:var(--muted);font-weight:700;text-align:left;padding:6px 8px;font-size:11px;text-transform:uppercase}
 table.st td{padding:6px 8px;border-top:1px solid var(--line)}
@@ -229,6 +248,12 @@ table.st.inc td.cella.scarsa { background:rgba(255,95,109,0.15); box-shadow:inse
           <button class="btn sm" onclick="slRinominaPartita()" title="Rinomina la partita in corso">✏️</button>
         </div></div>
       <div><label>Quarto</label><div class="row" id="slQuarti"></div></div>
+      <div class="crono"><label>Tempo che manca</label>
+        <div class="row" style="gap:6px;flex-wrap:nowrap">
+          <span class="t" id="slCrono" onclick="slCronoSet()" title="Tocca per correggere il minuto">10:00</span>
+          <button class="btn sm" id="slCronoBtn" onclick="slCronoVaiFerma()" title="Avvia o ferma il cronometro">&#9654;&#xFE0E;</button>
+          <button class="btn sm" onclick="slIntervallo()" title="Riepilogo del primo tempo, pronto da leggere al capo allenatore">&#9208; INTERVALLO</button>
+        </div></div>
       <div style="margin-left:auto;text-align:right;">
         <label>Punteggio</label>
         <div class="row" style="justify-content:flex-end;">
@@ -283,6 +308,15 @@ table.st.inc td.cella.scarsa { background:rgba(255,95,109,0.15); box-shadow:inse
         <button class="btn sm" style="float:right;margin-right:6px" onclick="slRipristina('difeseCustom')" title="Rimette la lista di partenza">↺</button></div>
       <div class="colonna" id="slDifese"></div>
     </div>
+  </div>
+
+  <!-- Riepilogo dal vivo: sta subito sotto il campo perche' e' quello che si
+       guarda DURANTE la partita, non a fine gara. -->
+  <div class="card">
+    <div class="ttl">Riepilogo dal vivo
+      <button class="btn sm" style="float:right" onclick="slEsportaChiamate()" title="Foglio CSV con quarto e minuto di ogni chiamata: serve per incrociarlo con Hudl">&#10515; CSV chiamate</button>
+    </div>
+    <div id="slRiep"></div>
   </div>
 
   <div class="card">
@@ -2385,6 +2419,7 @@ function slUltimoEvento() {
 function slPushEvento(ev) {
   const sl = DB.scoutingLive;
   ev.id = uid('sl'); ev.partita = sl.partitaCorrente || ''; ev.quarto = sl.quartoCorrente || '1'; ev.ts = Date.now();
+  ev.crono = slRestoSec();   // secondi che mancano alla fine del quarto: la chiave per incrociare con Hudl
   sl.eventi.push(ev); save();
 }
 function slUndo() {
@@ -2500,6 +2535,7 @@ function slNuovaPartita() {
   if (slPartite().indexOf(nome) >= 0 && !confirm('Esiste gia\' una partita con questo nome: vuoi riaprirla e continuare a taggarci sopra?')) return;
   sl.partitaCorrente = nome;
   sl.quartoCorrente = '1';
+  sl.crono = { resto: 600, va: false, da: 0 };
   slUltimoId = null;
   if (!sl.punteggioManuale) sl.punteggioManuale = {};
   if (!sl.punteggioManuale[nome]) sl.punteggioManuale[nome] = { noi: 0, avversari: 0 };
@@ -2524,7 +2560,61 @@ function slRinominaPartita() {
   }
   sl.partitaCorrente = nome; save(); slRender(); toast('✏️ Rinominata');
 }
-function slSetQuarto(q) { DB.scoutingLive.quartoCorrente = q; save(); slRender(); }
+/* ===================== CRONOMETRO =====================
+   Serve a due cose diverse. In panchina: sapere a che minuto sei senza
+   alzare la testa. Dopo la partita: il play-by-play di Hudl e' scritto sul
+   tempo che MANCA alla fine del quarto, quindi se ogni chiamata si porta
+   dietro quarto + minuto le due cose si possono mettere una accanto
+   all'altra riga per riga. Da li' escono quintetti, giochi e parziali. */
+const SL_DUR = { '1': 600, '2': 600, '3': 600, '4': 600, 'S': 300 };
+function slCrono() {
+  const sl = DB.scoutingLive;
+  if (!sl.crono) sl.crono = { resto: SL_DUR[sl.quartoCorrente] || 600, va: false, da: 0 };
+  return sl.crono;
+}
+function slRestoSec() {
+  const c = slCrono();
+  if (!c.va) return Math.max(0, c.resto | 0);
+  return Math.max(0, (c.resto | 0) - Math.round((Date.now() - c.da) / 1000));
+}
+function slMMSS(s) { s = Math.max(0, s | 0); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+function slCronoVaiFerma() {
+  const c = slCrono();
+  if (c.va) { c.resto = slRestoSec(); c.va = false; toast('\u23F8 Cronometro fermo'); }
+  else { c.da = Date.now(); c.va = true; toast('\u25B6\uFE0E Cronometro avviato'); }
+  save(); slCronoRender();
+}
+/* Il cronometro dell'app e quello del campo prima o poi divergono (time-out,
+   fischi, un tocco dimenticato). Toccando il numero lo si rimette a posto in
+   due secondi: meglio questo che avere minuti sbagliati su tutta la partita. */
+function slCronoSet() {
+  const c = slCrono();
+  const v = prompt('Minuti che mancano alla fine del quarto (mm:ss):', slMMSS(slRestoSec()));
+  if (v === null) return;
+  const m = String(v).match(/^\s*(\d{1,2})\s*[:.,]?\s*(\d{1,2})?\s*$/);
+  if (!m) { toast('Scrivi per esempio 7:20', true); return; }
+  c.resto = Math.max(0, parseInt(m[1], 10) * 60 + (m[2] ? parseInt(m[2], 10) : 0));
+  c.da = Date.now();
+  save(); slCronoRender(); toast('\u23F1 ' + slMMSS(c.resto));
+}
+function slCronoRender() {
+  const el = document.getElementById('slCrono'); if (!el) return;
+  const c = slCrono(), s = slRestoSec();
+  el.textContent = slMMSS(s);
+  el.classList.toggle('va', !!c.va);
+  const b = document.getElementById('slCronoBtn');
+  if (b) b.innerHTML = c.va ? '\u23F8' : '\u25B6\uFE0E';
+}
+setInterval(slCronoRender, 500);
+/* Cambiando quarto il cronometro riparte da 10:00 (5:00 nel supplementare)
+   ma resta fermo: si avvia con la palla in aria. */
+function slSetQuarto(q) {
+  const sl = DB.scoutingLive;
+  sl.quartoCorrente = q;
+  sl.crono = { resto: SL_DUR[q] || 600, va: false, da: 0 };
+  save(); slRender();
+  toast(q === 'S' ? 'Supplementare \u2014 5:00' : 'Quarto ' + q + ' \u2014 10:00');
+}
 function slPunti(chi, d) { const m = slManuale(); m[chi] = (m[chi] || 0) + d; save(); slRender(); }
 function slEventiPartita() { const sl = DB.scoutingLive; return sl.eventi.filter(e => (e.partita || '') === (sl.partitaCorrente || '')); }
 function slAddGiocatrice() {
@@ -2623,6 +2713,195 @@ function slCella(c, forte) {
     + ' <span class="pc">' + pct + '%</span>'
     + '<span class="pp">' + c.pt + 'pt · ' + ppt.toFixed(2) + ' ppt</span></td>';
 }
+/* ===================== RIEPILOGO DAL VIVO =====================
+   Quello che manca in panchina non e' il dettaglio, e' il colpo d'occhio:
+   quanti possessi abbiamo giocato su ogni schema e quanto hanno reso. Il
+   numero che decide e' PPP (punti per possesso): 1.00 e' la media, sopra
+   1.10 lo schema sta pagando, sotto 0.75 no. La percentuale da sola inganna,
+   perche' non tiene conto delle palle perse e non distingue 2 da 3. */
+let slPeriodo = 'tutta';
+const SL_PERIODI = [['tutta', 'TUTTA'], ['1', '1\u00BA'], ['2', '2\u00BA'], ['1T', '1\u00BA TEMPO'],
+                    ['3', '3\u00BA'], ['4', '4\u00BA'], ['2T', '2\u00BA TEMPO']];
+function slInPeriodo(e) {
+  const q = String(e.quarto || '1');
+  if (slPeriodo === 'tutta') return true;
+  if (slPeriodo === '1T') return q === '1' || q === '2';
+  if (slPeriodo === '2T') return q === '3' || q === '4' || q === 'S';
+  return q === slPeriodo;
+}
+function slSetPeriodo(p) { slPeriodo = p; slRender(); }
+/* All'intervallo il riepilogo si mette da solo sul primo tempo e si porta
+   sotto gli occhi: e' il momento in cui il capo allenatore chiede «cosa sta
+   funzionando?» e la risposta deve essere gia' pronta, non da cercare. */
+function slIntervallo() {
+  slPeriodo = '1T'; slRender();
+  const el = document.getElementById('slRiep');
+  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  toast('\u23F8 Intervallo \u2014 riepilogo del primo tempo');
+}
+function slSegnatiTL(e) { return e.segnati != null ? e.segnati : (e.esito === 'segnato' ? 1 : 0); }
+/* Un possesso e': un tiro dal campo, oppure un viaggio in lunetta, oppure una
+   palla persa. I tiri liberi di una stessa serie contano una volta sola. */
+function slConta(lista) {
+  const r = { poss: 0, punti: 0, tiri: 0, seg: 0, pp: 0, t2: 0, s2: 0, t3: 0, s3: 0, tl: 0, stl: 0, viaggi: 0 };
+  lista.forEach(e => {
+    if (e.tipo === 'pp') { r.pp++; r.poss++; return; }
+    if (e.tipo !== 'tiro') return;
+    if (e.categoria === 'TL') {
+      const a = e.tentati || 1, s = slSegnatiTL(e);
+      r.tl += a; r.stl += s; r.punti += s; r.viaggi++; r.poss++; return;
+    }
+    r.tiri++; r.poss++;
+    const v = e.punti || 2;
+    if (e.esito === 'segnato') { r.seg++; r.punti += v; }
+    if (v === 3) { r.t3++; if (e.esito === 'segnato') r.s3++; }
+    else { r.t2++; if (e.esito === 'segnato') r.s2++; }
+  });
+  r.ppp = r.poss ? r.punti / r.poss : 0;
+  return r;
+}
+/* Una riga in italiano, non un'altra tabella. All'intervallo il capo
+   allenatore non ha tempo di leggere numeri: ha bisogno di sentirsi dire
+   cosa insistere e cosa lasciare stare. Si parla solo di schemi giocati
+   almeno due volte, se no una fortuna singola sembra una tendenza. */
+function slLettura(nomi, per_gioco, tot) {
+  if (tot.poss < 4) return '';
+  const c = nomi.map(n => Object.assign({ n }, slConta(per_gioco[n]))).filter(x => x.poss >= 2);
+  if (!c.length) return '';
+  const su = c.slice().sort((a, b) => b.ppp - a.ppp)[0];
+  const giu = c.slice().sort((a, b) => a.ppp - b.ppp)[0];
+  const parti = [];
+  if (su && su.ppp >= 1.00) parti.push('<b>Sta pagando:</b> ' + esc(su.n) + ' \u2014 ' + su.ppp.toFixed(2)
+    + ' punti a possesso su ' + su.poss + ' giocati.');
+  if (giu && giu.n !== su.n && giu.ppp <= 0.85) parti.push('<b>Non sta pagando:</b> ' + esc(giu.n) + ' \u2014 '
+    + giu.ppp.toFixed(2) + ' su ' + giu.poss + ' giocati.');
+  if (tot.pp) parti.push('Palle perse: ' + tot.pp + ' su ' + tot.poss + ' possessi ('
+    + Math.round(tot.pp / tot.poss * 100) + '%).');
+  if (!parti.length) return '';
+  return '<div class="pend" style="margin:0 0 10px">' + parti.join(' ') + '</div>';
+}
+function slBarra(ppp) {
+  const w = Math.max(2, Math.min(100, Math.round(ppp / 1.5 * 100)));
+  return '<span class="bar' + (ppp <= 0.75 ? ' rossa' : '') + '"><i style="width:' + w + '%"></i>'
+    + '<span>' + ppp.toFixed(2) + '</span></span>';
+}
+/* Andamento: quanti punti abbiamo fatto e subito quarto per quarto. I punti
+   subiti sono quelli taggati sulle difese, quindi valgono quanto e' stato
+   taggato: e' un'indicazione del parziale, non il tabellino ufficiale. */
+function slAndamentoHTML() {
+  const ev = slEventiPartita();
+  const q = {};
+  ev.forEach(e => {
+    const k = String(e.quarto || '1');
+    const a = q[k] || (q[k] = { noi: 0, loro: 0 });
+    if (e.tipo === 'tiro') a.noi += (e.categoria === 'TL') ? slSegnatiTL(e) : (e.esito === 'segnato' ? (e.punti || 2) : 0);
+    else if (e.tipo === 'dif' && e.esito === 'canestro') a.loro += (e.punti || 2);
+  });
+  const ord = ['1', '2', '3', '4', 'S'].filter(k => q[k]);
+  if (!ord.length) return '';
+  return '<div class="ttl" style="margin-top:14px">Andamento</div><table class="st"><tr><th>Quarto</th>'
+    + ord.map(k => '<th>' + (k === 'S' ? 'Suppl.' : k + '\u00BA') + '</th>').join('') + '</tr>'
+    + '<tr><td>Noi</td>' + ord.map(k => '<td class="n"><b>' + q[k].noi + '</b></td>').join('') + '</tr>'
+    + '<tr><td>Loro (taggati)</td>' + ord.map(k => '<td class="n">' + q[k].loro + '</td>').join('') + '</tr>'
+    + '<tr><td>Scarto</td>' + ord.map(k => {
+        const d = q[k].noi - q[k].loro;
+        return '<td class="n" style="font-weight:800;color:' + (d > 0 ? '#7ee2a0' : d < 0 ? '#ff8b8b' : 'inherit') + '">'
+          + (d > 0 ? '+' : '') + d + '</td>';
+      }).join('') + '</tr></table>';
+}
+function slRiepilogoHTML() {
+  const tutti = slEventiPartita();
+  const per = '<div class="per">' + SL_PERIODI.map(([k, l]) =>
+    '<button class="chip' + (slPeriodo === k ? ' on' : '') + '" onclick="slSetPeriodo(\'' + k + '\')">' + l + '</button>').join('') + '</div>';
+  if (!tutti.length) return per + '<p class="muted">Il riepilogo si riempie da solo mentre tagghi.</p>';
+  const ev = tutti.filter(slInPeriodo);
+  const r = slConta(ev);
+  const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '\u2014';
+
+  const tot = '<div class="tot">'
+    + '<div><b>' + r.poss + '</b><span>possessi</span></div>'
+    + '<div><b>' + r.punti + '</b><span>punti</span></div>'
+    + '<div><b>' + (r.poss ? r.ppp.toFixed(2) : '\u2014') + '</b><span>punti/possesso</span></div>'
+    + '<div><b>' + r.s2 + '/' + r.t2 + '</b><span>da 2 \u00B7 ' + pct(r.s2, r.t2) + '</span></div>'
+    + '<div><b>' + r.s3 + '/' + r.t3 + '</b><span>da 3 \u00B7 ' + pct(r.s3, r.t3) + '</span></div>'
+    + '<div><b>' + r.stl + '/' + r.tl + '</b><span>liberi \u00B7 ' + pct(r.stl, r.tl) + '</span></div>'
+    + '<div><b>' + r.pp + '</b><span>palle perse</span></div>'
+    + '</div>';
+
+  // un blocco per ogni schema effettivamente chiamato, in ordine di quante
+  // volte l'abbiamo giocato: la prima domanda in panchina e' «quanti ne
+  // abbiamo fatti», la seconda «quanto rendono»
+  const per_gioco = {};
+  ev.forEach(e => {
+    if (!e.gioco || (e.tipo !== 'tiro' && e.tipo !== 'pp')) return;
+    (per_gioco[e.gioco] || (per_gioco[e.gioco] = [])).push(e);
+  });
+  const nomi = Object.keys(per_gioco).sort((a, b) => per_gioco[b].length - per_gioco[a].length);
+  const senzaTag = ev.filter(e => (e.tipo === 'tiro' || e.tipo === 'pp') && !e.gioco).length;
+  let gioHTML;
+  if (!nomi.length) {
+    gioHTML = '<p class="muted">Nessuna chiamata taggata su uno schema in questo periodo.</p>';
+  } else {
+    gioHTML = '<div style="overflow-x:auto"><table class="st"><tr><th>Gioco</th><th>Giocati</th>'
+      + '<th>Tiri</th><th>%</th><th>Punti</th><th>Punti per possesso</th></tr>'
+      + nomi.map(n => {
+          const c = slConta(per_gioco[n]);
+          const cls = c.poss < 2 ? '' : (c.ppp >= 1.10 ? ' class="buona"' : (c.ppp <= 0.75 ? ' class="scarsa"' : ''));
+          return '<tr' + cls + '><td style="font-weight:700">' + esc(n) + '</td>'
+            + '<td class="n"><b>' + c.poss + '</b>' + (c.pp ? ' <span class="muted">(' + c.pp + ' pp)</span>' : '') + '</td>'
+            + '<td class="n">' + c.seg + '/' + c.tiri
+              + (c.viaggi ? ' <span class="muted">+ ' + c.stl + '/' + c.tl + ' TL</span>' : '') + '</td>'
+            + '<td class="n">' + pct(c.seg, c.tiri) + '</td>'
+            + '<td class="n">' + c.punti + '</td>'
+            + '<td>' + slBarra(c.ppp) + '</td></tr>';
+        }).join('')
+      + '</table></div>'
+      + (senzaTag ? '<p class="muted" style="margin-top:6px">' + senzaTag + ' conclusioni senza schema taggato.</p>' : '');
+  }
+
+  // le difese avversarie: all'intervallo la seconda domanda e' sempre «cosa ci
+  // stanno facendo loro»
+  const per_dif = {};
+  ev.forEach(e => { if (e.tipo === 'dif' && e.difesa) (per_dif[e.difesa] || (per_dif[e.difesa] = [])).push(e); });
+  const nomiD = Object.keys(per_dif).sort((a, b) => per_dif[b].length - per_dif[a].length);
+  const difHTML = !nomiD.length ? '' :
+    '<div class="ttl" style="margin-top:14px">Difese subite</div><table class="st">'
+    + '<tr><th>Difesa</th><th>Volte</th><th>Canestri subiti</th><th>Punti subiti</th><th>Falli nostri</th></tr>'
+    + nomiD.map(n => {
+        const l = per_dif[n];
+        const can = l.filter(e => e.esito === 'canestro').length;
+        const fa = l.filter(e => e.esito === 'fallo').length;
+        const tot2 = l.length - fa;
+        return '<tr><td style="font-weight:700">' + esc(n) + '</td><td class="n">' + tot2 + '</td>'
+          + '<td class="n">' + can + '</td><td class="n">' + (can * 2) + '</td><td class="n">' + fa + '</td></tr>';
+      }).join('') + '</table>';
+
+  return per + tot + slLettura(nomi, per_gioco, r)
+    + '<div class="ttl" style="margin-top:6px">Giochi ' + (slPeriodo === 'tutta' ? '' : '\u2014 ' + (SL_PERIODI.find(x => x[0] === slPeriodo) || ['', ''])[1]) + '</div>'
+    + gioHTML + difHTML + slAndamentoHTML();
+}
+
+/* CSV delle chiamate: una riga per chiamata con quarto e minuto. E' il file
+   da mettere accanto al play-by-play di Hudl dopo la partita. */
+function slEsportaChiamate() {
+  const ev = slEventiPartita();
+  if (!ev.length) { toast('Nessuna chiamata da esportare', true); return; }
+  const testa = ['partita', 'quarto', 'tempo_restante', 'ora_reale', 'tipo', 'gioco', 'giocatrice',
+                 'difesa', 'esito', 'tentati', 'segnati', 'punti', 'x_pct', 'y_pct'];
+  const righe = [testa];
+  ev.forEach(e => righe.push([
+    e.partita || '', e.quarto || '', e.crono != null ? slMMSS(e.crono) : '',
+    e.ts ? new Date(e.ts).toTimeString().slice(0, 8) : '',
+    e.tipo === 'pp' ? 'palla persa' : (e.tipo === 'dif' ? 'difesa' : (e.categoria === 'TL' ? 'tiri liberi' : 'tiro')),
+    e.gioco || '', e.giocatrice || '', e.difesa || '', e.esito || '',
+    e.tentati != null ? e.tentati : '', e.segnati != null ? e.segnati : '',
+    e.punti != null ? e.punti : '',
+    e.xPct != null ? e.xPct.toFixed(4) : '', e.yPct != null ? e.yPct.toFixed(4) : ''
+  ]));
+  const csv = '\uFEFF' + righe.map(r => r.map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(';')).join('\r\n');
+  scaricaTesto(csv, 'chiamate_' + (slug(DB.scoutingLive.partitaCorrente) || new Date().toISOString().slice(0, 10)) + '.csv', 'text/csv');
+}
+
 function slRender() {
   const sl = DB.scoutingLive;
   const pt = slPunteggio();
@@ -2656,7 +2935,7 @@ function slRender() {
           ? 'tiri liberi ' + (u.segnati != null ? u.segnati : (u.esito === 'segnato' ? 1 : 0)) + '/' + (u.tentati || 1)
           : 'tiro da ' + (u.punti || 2) + ' ' + (u.esito === 'segnato' ? 'SEGNATO' : 'sbagliato'))}
       ${u.gioco ? ' · <b>' + esc(u.gioco) + '</b>' : ''}${u.giocatrice ? ' · ' + esc(u.giocatrice) : ''}
-      <span class="muted"> — tocca il <b>gioco</b> e la <b>giocatrice</b> (puoi metterli tutti e due; ritoccando togli il tag)</span></div>`;
+      <span class="muted"> — ${u.quarto ? u.quarto + 'º' + (u.crono != null ? ' ' + slMMSS(u.crono) : '') + ' · ' : ''}tocca il <b>gioco</b> e la <b>giocatrice</b> (puoi metterli tutti e due; ritoccando togli il tag)</span></div>`;
 
   const ev = slEventiPartita();
   let t2 = 0, s2 = 0, t3 = 0, s3 = 0, tl = 0, stl = 0, pp = 0;
@@ -2714,6 +2993,9 @@ function slRender() {
        <tr><th>Situazione</th><th>Segnati</th><th>Tentati</th><th>%</th></tr>
        ${Object.entries(byCat).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.s}</td><td>${v.t}</td><td>${pct(v.s, v.t)}</td></tr>`).join('')}</table>` : ''}
      ${incHTML}`;
+  const riep = document.getElementById('slRiep');
+  if (riep) riep.innerHTML = slRiepilogoHTML();
+  slCronoRender();
   slDrawCourt();
 }
 
@@ -2725,14 +3007,15 @@ function payloadScouting() {
            giocatriciEscluse: [], partitaCorrente: sl.partitaCorrente, punteggio: slPunteggio(),
            punteggioManuale: sl.punteggioManuale || {} };
 }
-async function scarica(obj, nome) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+function scarica(obj, nome) { return scaricaTesto(JSON.stringify(obj, null, 2), nome, 'application/json'); }
+async function scaricaTesto(testo, nome, mime) {
+  const blob = new Blob([testo], { type: mime || 'text/plain' });
   // Su iPad il download classico è inaffidabile (in modalità "app dalla Home"
   // spesso non fa nulla), mentre il foglio di condivisione di iOS permette di
   // mandare il file al Mac con AirDrop in un passaggio solo. Quindi si prova
   // prima quello, e si ricade sul download solo dove non è disponibile (Mac).
   try {
-    const file = new File([blob], nome, { type: 'application/json' });
+    const file = new File([blob], nome, { type: mime || 'text/plain' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], title: nome });
       toast('📤 Inviato');
