@@ -297,6 +297,7 @@ table.st.inc td.cella.scarsa { background:rgba(255,95,109,0.15); box-shadow:inse
           <button class="btn ok" onclick="slTL('segnato')">+</button>
           <button class="btn no" onclick="slTL('sbagliato')">−</button>
         </span>
+        <button class="btn" onclick="slAvviaFallo()" title="Il gioco è finito con un fallo subito: toccalo e poi tagga il gioco. Se vanno in lunetta tocca + o − e diventa una serie di liberi.">🖐 Fallo subito</button>
         <button class="btn sm" style="margin-left:auto" onclick="slUndo()">↩︎ Annulla</button>
       </div>
       <!-- le giocatrici stanno QUI, attaccate al campo: durante la partita
@@ -1930,10 +1931,16 @@ function fuoriRaduno(n) {
    Si aggiungono con «＋», si tolgono con doppio tocco, e con «↺ base» si
    rimette la lista di partenza. Tutto quello che cambi resta salvato
    sull'iPad da solo: non c'è niente da premere per salvare. */
-const GIOCHI_STANDARD = ['CONTROPIEDE', 'TRANSIZIONE', 'DRAG', '#BASE', '#BASE 1', '#BASE 2', '#BASE 5',
+const GIOCHI_STANDARD = ['CONTROPIEDE', 'TRANSIZIONE DRAG', 'TRANSIZIONE', '1C1 FRONTE', '1C1 SPALLE',
+  'AREA DA PENETRAZIONE', 'P&R CENTRALE', 'P&R LATERALE', 'PENETRA E SCARICA', 'TIRO SU SCARICO',
+  'VS ZONA', 'RIMESSA LATERALE', 'RIMESSA FONDO', 'RIM. OFF.', 'SPAIN'];
+/* La lista precedente: serve per sapere quali voci sono ancora quelle di
+   serie e possono essere sostituite. Quelle aggiunte o rinominate a mano non
+   compaiono qui, quindi restano dove sono. */
+const GIOCHI_V2 = ['CONTROPIEDE', 'TRANSIZIONE', 'DRAG', '#BASE', '#BASE 1', '#BASE 2', '#BASE 5',
   '#2 ALTO', '#2 LATO', '#5 BASSO', '#5 LATO', '#POLLICE', '#POLLICE BASSO', '#ELLE', '#CORNA',
   'RIMESSA FONDO', 'RIMESSA LATO', 'RIM. OFF.', 'CASUALE', 'VS ZONA'];
-const LISTE_VERSIONE = 2;   // alzalo quando aggiungi giochi o difese di serie
+const LISTE_VERSIONE = 3;   // alzalo quando aggiungi giochi o difese di serie
 const DIFESE_STANDARD = ['DIFESA CP', 'VS TRANSIZIONE', 'DIFESA AREA', 'DIFESA POST BASSO',
   'DIFESA 1C1 FRONTE', 'USCITA BLOCCHI', 'FLARE', 'PICK CENTRALE', 'PICK LATERALE', 'RIM. OFF.'];
 // Le difese generiche della primissima versione: se sono ancora quelle
@@ -1991,6 +1998,19 @@ function load() {
       const mieD = vecchie ? [] : DB.scoutingLive.difeseCustom.filter(
         x => !DIFESE_STANDARD.some(s => s.toLowerCase() === String(x).trim().toLowerCase()));
       DB.scoutingLive.difeseCustom = DIFESE_STANDARD.concat(mieD);
+    } else if (v < 3) {
+      /* Cambio di impostazione, non aggiunta: la lista dei giochi viene
+         rifatta da capo. Tengo solo le voci che NON erano di serie, cioe'
+         quelle scritte o rinominate da te: quelle finiscono in fondo. */
+      const cur = DB.scoutingLive.giochiCustom || [];
+      const uguale = n => x => String(x).trim().toLowerCase() === String(n).trim().toLowerCase();
+      const mie = cur.filter(x => !GIOCHI_V2.some(g => uguale(g)(x)) && !GIOCHI_STANDARD.some(g => uguale(g)(x)));
+      DB.scoutingLive.giochiCustom = GIOCHI_STANDARD.concat(mie);
+      const infilaD = (lista, base) => {
+        const c2 = DB.scoutingLive[lista];
+        base.forEach(n => { if (!c2.some(uguale(n))) c2.push(n); });
+      };
+      infilaD('difeseCustom', DIFESE_STANDARD);
     } else {
       // aggiornamento: infilo solo quelle che mancano, nella posizione giusta
       const infila = (lista, base) => {
@@ -2410,8 +2430,26 @@ function slAvviaPP() {
    raccolti in un evento solo. Cosi' il gioco lo tagghi una volta sola e le
    statistiche dello schema contano il viaggio, non l'ultimo tiro. */
 const SL_TL_FINESTRA = 20000;
+/* FALLO SUBITO. Un gioco che finisce con un fallo non e' un tiro sbagliato:
+   e' un possesso che ha prodotto qualcosa. Lo tagghi qui e poi tocchi il
+   gioco, come per tutto il resto. Se poi vanno in lunetta, tocchi + o - e
+   questo stesso evento DIVENTA la serie di tiri liberi: cosi' il gioco resta
+   taggato una volta sola e non si contano due possessi per uno. */
+function slAvviaFallo() {
+  const ev = { tipo: 'fallo', giocatrice: null, gioco: null, punti: 0 };
+  slPushEvento(ev); slUltimoId = ev.id; slRender();
+  toast('🖐 Fallo subito — tocca il gioco; se va in lunetta tocca + o −');
+}
 function slTL(esito) {
   const u = slUltimoEvento();
+  if (u && u.tipo === 'fallo' && Date.now() - (u.ts || 0) < SL_TL_FINESTRA) {
+    u.tipo = 'tiro'; u.categoria = 'TL'; u.tentati = 1;
+    u.segnati = esito === 'segnato' ? 1 : 0; u.punti = u.segnati; u.esito = esito;
+    u.ts = Date.now();
+    save(); slRender();
+    toast('🎯 Liberi ' + u.segnati + '/1');
+    return;
+  }
   if (u && u.categoria === 'TL' && Date.now() - (u.ts || 0) < SL_TL_FINESTRA && (u.tentati || 1) < 3) {
     u.tentati = (u.tentati || 1) + 1;
     if (esito === 'segnato') { u.segnati = (u.segnati || 0) + 1; u.punti = u.segnati; u.esito = 'segnato'; }
@@ -2432,8 +2470,20 @@ function slUltimoEvento() {
   for (let i = ev.length - 1; i >= 0; i--) if (ev[i].id === slUltimoId) return ev[i];
   return null;
 }
+/* Un evento appena registrato NON puo' essere invisibile. Succedeva cosi':
+   all'intervallo si tocca INTERVALLO, il filtro resta sul primo tempo, e i
+   tiri del terzo e quarto quarto finivano dietro al filtro — sul campo non
+   compariva piu' niente. Adesso, se registri in un quarto spento, il filtro
+   si toglie da solo e te lo dice. */
+function slQuartoVisibile() {
+  const q = String(DB.scoutingLive.quartoCorrente || '1');
+  if (slQuarti[q]) return;
+  SL_QUARTI.forEach(k => slQuarti[k] = 1);
+  toast('👁 Filtro tolto: rivedi tutta la partita');
+}
 function slPushEvento(ev) {
   const sl = DB.scoutingLive;
+  slQuartoVisibile();
   ev.id = uid('sl'); ev.partita = sl.partitaCorrente || ''; ev.quarto = sl.quartoCorrente || '1'; ev.ts = Date.now();
   ev.crono = slRestoSec();   // secondi che mancano alla fine del quarto: la chiave per incrociare con Hudl
   sl.eventi.push(ev); save();
@@ -2628,6 +2678,9 @@ function slSetQuarto(q) {
   const sl = DB.scoutingLive;
   sl.quartoCorrente = q;
   sl.crono = { resto: SL_DUR[q] || 600, va: false, da: 0 };
+  // cambiando quarto si riaccende tutto: il filtro dell'intervallo non deve
+  // restare acceso nel quarto dopo, o i tiri nuovi non si vedono
+  SL_QUARTI.forEach(k => slQuarti[k] = 1);
   save(); slRender();
   toast(q === 'S' ? 'Supplementare \u2014 5:00' : 'Quarto ' + q + ' \u2014 10:00');
 }
@@ -2691,23 +2744,26 @@ function slRemove(lista, n) {
 // quante volte l'abbiamo usata, quanto ci abbiamo segnato, e i punti per
 // possesso -- il numero che dice davvero se lo schema sta funzionando.
 function slStatsTag(campo, n) {
-  let t = 0, s = 0, pt = 0, pp = 0;
+  let t = 0, s = 0, pt = 0, pp = 0, fa = 0;
   slEventiPartita().forEach(e => {
     if (e[campo] !== n) return;
     if (e.tipo === 'tiro') { t++; if (e.esito === 'segnato') { s++; pt += (e.punti || 2); } }
     else if (e.tipo === 'pp') pp++;
+    else if (e.tipo === 'fallo') fa++;
   });
   const usi = t + pp;
-  return { t, s, pt, pp, usi, ppp: usi ? pt / usi : 0 };
+  return { t, s, pt, pp, fa, usi, ppp: usi ? pt / usi : 0 };
 }
 function slTagStatsHTML(campo, n) {
   const st = slStatsTag(campo, n);
-  if (!st.usi) return '';
+  if (!st.usi && !st.fa) return '';
+  if (!st.usi) return '<span class="st">' + st.fa + 'f</span>';
   // scritte corte: nelle colonne lo spazio in larghezza e' poco e la casella
   // deve restare su una riga sola, se no ne stanno la meta'
   return '<span class="st">' + st.s + '/' + st.t
     + (st.pt ? '·' + st.pt + 'pt' : '')
     + (st.pp ? '·' + st.pp + 'pp' : '')
+    + (st.fa ? '·' + st.fa + 'f' : '')
     + '·' + st.ppp.toFixed(2) + '</span>';
 }
 function slStatsGioc(n) {
@@ -2782,8 +2838,11 @@ function slSegnatiTL(e) { return e.segnati != null ? e.segnati : (e.esito === 's
 /* Un possesso e': un tiro dal campo, oppure un viaggio in lunetta, oppure una
    palla persa. I tiri liberi di una stessa serie contano una volta sola. */
 function slConta(lista) {
-  const r = { poss: 0, punti: 0, tiri: 0, seg: 0, pp: 0, t2: 0, s2: 0, t3: 0, s3: 0, tl: 0, stl: 0, viaggi: 0 };
+  const r = { poss: 0, punti: 0, tiri: 0, seg: 0, pp: 0, t2: 0, s2: 0, t3: 0, s3: 0, tl: 0, stl: 0, viaggi: 0, fa: 0 };
   lista.forEach(e => {
+    // il fallo subito senza liberi non chiude il possesso: si conta a parte,
+    // se no un gioco che ci fa fischiare fallo sembrerebbe un possesso sprecato
+    if (e.tipo === 'fallo') { r.fa++; return; }
     if (e.tipo === 'pp') { r.pp++; r.poss++; return; }
     if (e.tipo !== 'tiro') return;
     if (e.categoria === 'TL') {
@@ -2864,6 +2923,7 @@ function slRiepilogoHTML() {
     + '<div><b>' + r.s3 + '/' + r.t3 + '</b><span>da 3 \u00B7 ' + pct(r.s3, r.t3) + '</span></div>'
     + '<div><b>' + r.stl + '/' + r.tl + '</b><span>liberi \u00B7 ' + pct(r.stl, r.tl) + '</span></div>'
     + '<div><b>' + r.pp + '</b><span>palle perse</span></div>'
+    + '<div><b>' + r.fa + '</b><span>falli subiti</span></div>'
     + '</div>';
 
   // un blocco per ogni schema effettivamente chiamato, in ordine di quante
@@ -2871,27 +2931,30 @@ function slRiepilogoHTML() {
   // abbiamo fatti», la seconda «quanto rendono»
   const per_gioco = {};
   ev.forEach(e => {
-    if (!e.gioco || (e.tipo !== 'tiro' && e.tipo !== 'pp')) return;
+    if (!e.gioco || (e.tipo !== 'tiro' && e.tipo !== 'pp' && e.tipo !== 'fallo')) return;
     (per_gioco[e.gioco] || (per_gioco[e.gioco] = [])).push(e);
   });
   const nomi = Object.keys(per_gioco).sort((a, b) => per_gioco[b].length - per_gioco[a].length);
-  const senzaTag = ev.filter(e => (e.tipo === 'tiro' || e.tipo === 'pp') && !e.gioco).length;
+  const senzaTag = ev.filter(e => (e.tipo === 'tiro' || e.tipo === 'pp' || e.tipo === 'fallo') && !e.gioco).length;
   let gioHTML;
   if (!nomi.length) {
     gioHTML = '<p class="muted">Nessuna chiamata taggata su uno schema in questo periodo.</p>';
   } else {
     gioHTML = '<div style="overflow-x:auto"><table class="st"><tr><th>Gioco</th><th>Giocati</th>'
-      + '<th>Tiri</th><th>%</th><th>Punti</th><th>Punti per possesso</th></tr>'
+      + '<th>Tiri</th><th>%</th><th>Falli sub.</th><th>Punti</th><th>Punti per possesso</th></tr>'
       + nomi.map(n => {
           const c = slConta(per_gioco[n]);
+          // un gioco finito solo in fallo non ha possessi conclusi: non va
+          // colorato di rosso come se avesse prodotto zero
           const cls = c.poss < 2 ? '' : (c.ppp >= 1.10 ? ' class="buona"' : (c.ppp <= 0.75 ? ' class="scarsa"' : ''));
           return '<tr' + cls + '><td style="font-weight:700">' + esc(n) + '</td>'
-            + '<td class="n"><b>' + c.poss + '</b>' + (c.pp ? ' <span class="muted">(' + c.pp + ' pp)</span>' : '') + '</td>'
+            + '<td class="n"><b>' + (c.poss || '\u00B7') + '</b>' + (c.pp ? ' <span class="muted">(' + c.pp + ' pp)</span>' : '') + '</td>'
             + '<td class="n">' + c.seg + '/' + c.tiri
               + (c.viaggi ? ' <span class="muted">+ ' + c.stl + '/' + c.tl + ' TL</span>' : '') + '</td>'
             + '<td class="n">' + pct(c.seg, c.tiri) + '</td>'
+            + '<td class="n">' + (c.fa || '\u00B7') + '</td>'
             + '<td class="n">' + c.punti + '</td>'
-            + '<td>' + slBarra(c.ppp) + '</td></tr>';
+            + '<td>' + (c.poss ? slBarra(c.ppp) : '<span class="muted">\u2014</span>') + '</td></tr>';
         }).join('')
       + '</table></div>'
       + (senzaTag ? '<p class="muted" style="margin-top:6px">' + senzaTag + ' conclusioni senza schema taggato.</p>' : '');
@@ -2968,7 +3031,7 @@ function slRender() {
   // vecchio pannello di conferma, che era un passaggio in piu' per niente.
   const u = slUltimoEvento();
   document.getElementById('slPending').innerHTML = !u ? '' :
-    `<div class="pend"><b>Ultimo:</b> ${u.tipo === 'pp' ? 'palla persa'
+    `<div class="pend"><b>Ultimo:</b> ${u.tipo === 'fallo' ? 'fallo subito' : u.tipo === 'pp' ? 'palla persa'
       : (u.categoria === 'TL'
           ? 'tiri liberi ' + (u.segnati != null ? u.segnati : (u.esito === 'segnato' ? 1 : 0)) + '/' + (u.tentati || 1)
           : 'tiro da ' + (u.punti || 2) + ' ' + (u.esito === 'segnato' ? 'SEGNATO' : 'sbagliato'))}
@@ -2976,8 +3039,9 @@ function slRender() {
       <span class="muted"> — ${u.quarto ? u.quarto + 'º' + (u.crono != null ? ' ' + slMMSS(u.crono) : '') + ' · ' : ''}tocca il <b>gioco</b> e la <b>giocatrice</b> (puoi metterli tutti e due; ritoccando togli il tag)</span></div>`;
 
   const ev = slEventiPartita();
-  let t2 = 0, s2 = 0, t3 = 0, s3 = 0, tl = 0, stl = 0, pp = 0;
+  let t2 = 0, s2 = 0, t3 = 0, s3 = 0, tl = 0, stl = 0, pp = 0, fs = 0;
   ev.forEach(e => {
+    if (e.tipo === 'fallo') { fs++; return; }
     if (e.tipo === 'pp') { pp++; return; }
     if (e.categoria === 'TL') { tl += (e.tentati || 1); stl += (e.segnati != null ? e.segnati : (e.esito === 'segnato' ? 1 : 0)); }
     else if (e.punti === 3) { t3++; if (e.esito === 'segnato') s3++; }
@@ -3026,7 +3090,8 @@ function slRender() {
      <tr><td>Da 2</td><td>${s2}</td><td>${t2}</td><td>${pct(s2, t2)}</td></tr>
      <tr><td>Da 3</td><td>${s3}</td><td>${t3}</td><td>${pct(s3, t3)}</td></tr>
      <tr><td>Tiri liberi</td><td>${stl}</td><td>${tl}</td><td>${pct(stl, tl)}</td></tr>
-     <tr><td>Palle perse</td><td colspan="3">${pp}</td></tr></table>
+     <tr><td>Palle perse</td><td colspan="3">${pp}</td></tr>
+     <tr><td>Falli subiti</td><td colspan="3">${fs}</td></tr></table>
      ${Object.keys(byCat).length ? `<div class="ttl" style="margin-top:12px">Per situazione</div><table class="st">
        <tr><th>Situazione</th><th>Segnati</th><th>Tentati</th><th>%</th></tr>
        ${Object.entries(byCat).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.s}</td><td>${v.t}</td><td>${pct(v.s, v.t)}</td></tr>`).join('')}</table>` : ''}
